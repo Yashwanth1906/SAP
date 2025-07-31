@@ -1,74 +1,64 @@
-import { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
+// Simple authentication utility for localStorage management
 
-export const authOptions: NextAuthOptions = {
-  providers: [
-    CredentialsProvider({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+}
 
-        // For demo purposes, let's create a simple authentication
-        // In production, you would validate against your database
-        const validUsers = [
-          {
-            id: "1",
-            email: "admin@biascertify.com",
-            password: "admin123",
-            name: "Admin User",
-            role: "admin"
-          },
-          {
-            id: "2", 
-            email: "user@biascertify.com",
-            password: "user123",
-            name: "Demo User",
-            role: "user"
-          }
-        ];
-
-        const user = validUsers.find(
-          (user) => user.email === credentials.email && user.password === credentials.password
-        );
-
-        if (user) {
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-          };
-        }
-
-        return null;
-      }
-    })
-  ],
-  session: {
-    strategy: "jwt",
+export const auth = {
+  // Store user data in localStorage
+  login: (user: AuthUser) => {
+    localStorage.setItem('organization_id', user.id.toString());
+    localStorage.setItem('organization_name', user.name);
+    localStorage.setItem('organization_email', user.email);
+    localStorage.setItem('isAuthenticated', 'true');
   },
-  pages: {
-    signIn: "/login",
+
+  // Get current user from localStorage
+  getCurrentUser: (): AuthUser | null => {
+    const id = localStorage.getItem('organization_id');
+    const name = localStorage.getItem('organization_name');
+    const email = localStorage.getItem('organization_email');
+    const isAuthenticated = localStorage.getItem('isAuthenticated');
+
+    if (!isAuthenticated || !id || !name || !email) {
+      return null;
+    }
+
+    return {
+      id: parseInt(id),
+      name,
+      email,
+    };
   },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.role = token.role;
-      }
-      return session;
-    },
+
+  // Check if user is authenticated
+  isAuthenticated: (): boolean => {
+    return localStorage.getItem('isAuthenticated') === 'true';
   },
-  secret: process.env.NEXTAUTH_SECRET || "fallback-secret-key-for-development",
+
+  // Logout - clear all auth data
+  logout: () => {
+    localStorage.removeItem('organization_id');
+    localStorage.removeItem('organization_name');
+    localStorage.removeItem('organization_email');
+    localStorage.removeItem('isAuthenticated');
+  },
+
+  // Get organization ID
+  getOrganizationId: (): number | null => {
+    const id = localStorage.getItem('organization_id');
+    return id ? parseInt(id) : null;
+  },
+
+  // Get organization name
+  getOrganizationName: (): string | null => {
+    return localStorage.getItem('organization_name');
+  },
+
+  // Get organization email
+  getOrganizationEmail: (): string | null => {
+    return localStorage.getItem('organization_email');
+  },
 }; 

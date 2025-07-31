@@ -1,8 +1,9 @@
-from models import *
+from .models import *
 
 __all__ = [
-    'OrganizationBase', 'OrganizationCreate', 'Organization',
-    'UserBase', 'UserCreate', 'User',
-    'ModelBase', 'ModelCreate', 'Model',
-    'UserResponse'
+    'OrganizationBase', 'OrganizationCreate', 'Organization', 'OrganizationLogin', 'OrganizationResponse',
+    'ModelBase', 'ModelCreate', 'Model', 'ModelWithVersions',
+    'CertificationTypeBase', 'CertificationType',
+    'ReportBase', 'Report',
+    'VersionBase', 'Version', 'VersionWithDetails'
 ] 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { auth } from "@/lib/auth";
+import AuthGuard from "@/components/AuthGuard";
 
 interface SensitiveAttribute {
   name: string;
@@ -35,8 +36,12 @@ interface DatasetAnalysis {
 }
 
 export default function UploadPage() {
-  const { data: session } = useSession();
   const router = useRouter();
+  const [userInfo, setUserInfo] = useState({
+    organizationName: '',
+    organizationId: '',
+    organizationEmail: ''
+  });
   
   const [activeTab, setActiveTab] = useState<"dataset" | "model">("dataset");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -44,6 +49,17 @@ export default function UploadPage() {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<DatasetAnalysis | null>(null);
+
+  useEffect(() => {
+    const currentUser = auth.getCurrentUser();
+    if (currentUser) {
+      setUserInfo({
+        organizationName: currentUser.name,
+        organizationId: currentUser.id.toString(),
+        organizationEmail: currentUser.email
+      });
+    }
+  }, []);
 
   // Hardcoded sample data for demo
   const sampleSensitiveAttributes: SensitiveAttribute[] = [
@@ -178,7 +194,8 @@ export default function UploadPage() {
   */
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -192,7 +209,7 @@ export default function UploadPage() {
             
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">
-                Welcome, {session?.user?.name || session?.user?.email}
+                Welcome, {userInfo.organizationName}
               </span>
               <Link href="/dashboard" className="text-[#0070C0] hover:text-[#005A9E] text-sm">
                 Dashboard
@@ -521,5 +538,6 @@ export default function UploadPage() {
         </AnimatePresence>
       </div>
     </div>
+    </AuthGuard>
   );
 } 

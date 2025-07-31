@@ -1,7 +1,20 @@
 from hdbcli import dbapi
 import threading
 from contextlib import contextmanager
-# DB CONFIG
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+DB_CONFIG = {
+    "address": os.getenv("DB_URL"),
+    "port": 443,
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("PASSWORD"),
+    "encrypt": True,
+    "sslValidateCertificate": False
+}
 
 class DatabaseManager:
     _instance = None

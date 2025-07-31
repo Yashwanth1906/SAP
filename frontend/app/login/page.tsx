@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { apiService } from "@/lib/api";
+import { auth } from "@/lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -18,20 +20,23 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const result = await signIn("credentials", {
+      const data = await apiService.loginOrganization({
         email,
         password,
-        redirect: false,
       });
 
-      if (result?.error) {
-        setError("Invalid email or password");
-      } else {
-        // Redirect to dashboard or home page
-        router.push("/dashboard");
-      }
-    } catch (error) {
-      setError("An error occurred. Please try again.");
+      // Store user data in localStorage
+      auth.login({
+        id: data.id,
+        name: data.name,
+        email: data.email,
+      });
+      
+      // Redirect to dashboard
+      router.push("/dashboard");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail;
+      setError(typeof errorMessage === 'string' ? errorMessage : "An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +82,7 @@ export default function LoginPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+                Organization Email
               </label>
               <div className="mt-1">
                 <input
@@ -89,7 +94,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-[#0070C0] focus:border-[#0070C0] sm:text-sm"
-                  placeholder="Enter your email"
+                  placeholder="Enter organization email"
                 />
               </div>
             </div>
@@ -150,18 +155,34 @@ export default function LoginPage() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo Credentials</span>
+                <span className="px-2 bg-white text-gray-500">New Organization?</span>
               </div>
             </div>
 
-            <div className="mt-6 space-y-3">
-              <div className="bg-gray-50 p-3 rounded-md">
-                <p className="text-xs text-gray-600 mb-1">Admin User:</p>
-                <p className="text-sm font-mono text-gray-800">admin@biascertify.com / admin123</p>
+            <div className="mt-6">
+              <Link
+                href="/register"
+                className="w-full flex justify-center py-2 px-4 border border-[#0070C0] text-sm font-medium rounded-md text-[#0070C0] bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0070C0] transition-colors"
+              >
+                Register Organization
+              </Link>
+            </div>
+
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Demo Credentials</span>
+                </div>
               </div>
-              <div className="bg-gray-50 p-3 rounded-md">
-                <p className="text-xs text-gray-600 mb-1">Demo User:</p>
-                <p className="text-sm font-mono text-gray-800">user@biascertify.com / user123</p>
+
+              <div className="mt-6 space-y-3">
+                <div className="bg-gray-50 p-3 rounded-md">
+                  <p className="text-xs text-gray-600 mb-1">Demo Organization:</p>
+                  <p className="text-sm font-mono text-gray-800">admin@techcorp.ai / securepassword123</p>
+                </div>
               </div>
             </div>
           </div>

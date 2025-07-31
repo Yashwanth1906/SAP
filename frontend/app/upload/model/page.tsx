@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { auth } from "@/lib/auth";
+import AuthGuard from "@/components/AuthGuard";
 
 interface ModelAnalysis {
   fairnessMetrics: {
@@ -32,8 +33,13 @@ const demoSensitiveAttributes = [
 ];
 
 export default function ModelUploadPage() {
-  const { data: session } = useSession();
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const user = auth.getCurrentUser();
+    setCurrentUser(user);
+  }, []);
 
   const [uploadedModel, setUploadedModel] = useState<File | null>(null);
   const [modelType, setModelType] = useState("Random Forest");
@@ -96,7 +102,8 @@ export default function ModelUploadPage() {
   */
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -109,7 +116,7 @@ export default function ModelUploadPage() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">
-                Welcome, {session?.user?.name || session?.user?.email}
+                Welcome, {currentUser?.name || currentUser?.email}
               </span>
               <Link href="/dashboard" className="text-[#0070C0] hover:text-[#005A9E] text-sm">
                 Dashboard
@@ -346,5 +353,6 @@ export default function ModelUploadPage() {
         )}
       </div>
     </div>
+    </AuthGuard>
   );
 } 

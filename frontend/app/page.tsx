@@ -1,13 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { auth } from "@/lib/auth";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("overview");
-  const { data: session } = useSession();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    setIsAuthenticated(auth.isAuthenticated());
+  }, []);
 
   const fadeInUp = {
     initial: { opacity: 0, y: 60 },
@@ -48,7 +52,7 @@ export default function Home() {
               <a href="#features" className="text-gray-700 hover:text-[#0070C0] transition-colors font-medium">Features</a>
               <a href="#how-it-works" className="text-gray-700 hover:text-[#0070C0] transition-colors font-medium">How it Works</a>
               <a href="#pricing" className="text-gray-700 hover:text-[#0070C0] transition-colors font-medium">Pricing</a>
-              {session ? (
+              {isAuthenticated ? (
                 <Link href="/dashboard" className="bg-[#0070C0] text-white px-6 py-2 rounded hover:bg-[#005A9E] transition-colors font-medium">
                   Dashboard
                 </Link>

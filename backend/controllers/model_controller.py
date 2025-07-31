@@ -1,61 +1,212 @@
 from fastapi import HTTPException
-from typing import List
 from db.connection import db_manager
-from utils.models import Model, ModelCreate
+from utils.models import ModelCreate, Model, ModelWithVersions, VersionWithDetails, Report, CertificationType
+from typing import List
 
-class ModelController:
-    @staticmethod
-    def create_model(model: ModelCreate, organization_id: int) -> Model:
-        try:
-            with db_manager.get_cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO MODELS (NAME, TYPE, CERTIFICATION_CATEGORY, BIAS_ON, INTENTIONAL_BIAS, ORGANIZATION_ID)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (model.name, model.type, model.certification_category, model.bias_on, model.intentional_bias, organization_id))
+def create_model(model_data: ModelCreate) -> Model:
+    """Create a new model"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            # Verify organization exists
+            cursor.execute("SELECT ID FROM ORGANIZATIONS WHERE ID = ?", (model_data.organization_id,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Organization not found")
+            
+            # Insert new model
+            cursor.execute("""
+                INSERT INTO MODELS (ORGANIZATION_ID, NAME, TYPE, DESCRIPTION, GITHUB_URL, GITHUB_ACTIONS)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (model_data.organization_id, model_data.name, model_data.type, 
+                  model_data.description, model_data.github_url, model_data.github_actions))
+            
+            # Get the created model
+            cursor.execute("""
+                SELECT ID, ORGANIZATION_ID, NAME, TYPE, DESCRIPTION, GITHUB_URL, GITHUB_ACTIONS, CREATED_AT
+                FROM MODELS WHERE ID = (SELECT MAX(ID) FROM MODELS WHERE ORGANIZATION_ID = ?)
+            """, (model_data.organization_id,))
+            
+            model = cursor.fetchone()
+            return Model(
+                id=model[0],
+                organization_id=model[1],
+                name=model[2],
+                type=model[3],
+                description=model[4],
+                github_url=model[5],
+                github_actions=model[6],
+                created_at=model[7]
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create model: {str(e)}")
+
+def get_models_by_organization(organization_id: int) -> List[Model]:
+    """Get all models for an organization"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            # Verify organization exists
+            cursor.execute("SELECT ID FROM ORGANIZATIONS WHERE ID = ?", (organization_id,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Organization not found")
+            
+            # Get all models for the organization
+            cursor.execute("""
+                SELECT ID, ORGANIZATION_ID, NAME, TYPE, DESCRIPTION, GITHUB_URL, GITHUB_ACTIONS, CREATED_AT
+                FROM MODELS WHERE ORGANIZATION_ID = ?
+                ORDER BY CREATED_AT DESC
+            """, (organization_id,))
+            
+            models = []
+            for row in cursor.fetchall():
+                models.append(Model(
+                    id=row[0],
+                    organization_id=row[1],
+                    name=row[2],
+                    type=row[3],
+                    description=row[4],
+                    github_url=row[5],
+                    github_actions=row[6],
+                    created_at=row[7]
+                ))
+            
+            return models
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get models: {str(e)}")
+
+def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
+    """Get detailed versions of a model with reports"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            # Get the model
+            cursor.execute("""
+                SELECT ID, ORGANIZATION_ID, NAME, TYPE, DESCRIPTION, GITHUB_URL, GITHUB_ACTIONS, CREATED_AT
+                FROM MODELS WHERE ID = ?
+            """, (model_id,))
+            
+            model_row = cursor.fetchone()
+            if not model_row:
+                raise HTTPException(status_code=404, detail="Model not found")
+            
+            model = Model(
+                id=model_row[0],
+                organization_id=model_row[1],
+                name=model_row[2],
+                type=model_row[3],
+                description=model_row[4],
+                github_url=model_row[5],
+                github_actions=model_row[6],
+                created_at=model_row[7]
+            )
+            
+            # Get versions with their reports and certification types
+            cursor.execute("""
+                SELECT v.ID, v.NAME, v.SELECTION_DATA, v.INTENTIONAL_BIAS, v.CERTIFICATION_TYPE_ID, 
+                       v.REPORT_ID, v.MODEL_ID, v.CREATED_AT,
+                       r.ID, r.MITIGATION_TECHNIQUES, r.BIAS_FEATURE, r.FAIRNESS_SCORE, 
+                       r.INTENTIONAL_BIAS, r.SHAP, r.CREATED_AT,
+                       ct.ID, ct.NAME, ct.DESCRIPTION, ct.FAIRNESS_SCORE, ct.INTENTIONAL_BIAS, ct.CREATED_AT
+                FROM VERSIONS v
+                LEFT JOIN REPORTS r ON v.REPORT_ID = r.ID
+                LEFT JOIN CERTIFICATION_TYPES ct ON v.CERTIFICATION_TYPE_ID = ct.ID
+                WHERE v.MODEL_ID = ?
+                ORDER BY v.CREATED_AT DESC
+            """, (model_id,))
+            
+            versions = []
+            for row in cursor.fetchall():
+                # Create report object if exists
+                report = None
+                if row[8]:  # Report ID exists
+                    report = Report(
+                        id=row[8],
+                        model_id=model_id,
+                        mitigation_techniques=row[9],
+                        bias_feature=row[10],
+                        fairness_score=row[11],
+                        intentional_bias=row[12],
+                        shap=row[13],
+                        created_at=row[14]
+                    )
                 
-                cursor.execute("""
-                    SELECT ID, NAME, TYPE, CERTIFICATION_CATEGORY, BIAS_ON, INTENTIONAL_BIAS, ORGANIZATION_ID
-                    FROM MODELS
-                    WHERE ID = (SELECT MAX(ID) FROM MODELS)
-                """)
+                # Create certification type object if exists
+                certification_type = None
+                if row[15]:  # Certification type ID exists
+                    certification_type = CertificationType(
+                        id=row[15],
+                        name=row[16],
+                        description=row[17],
+                        fairness_score=row[18],
+                        intentional_bias=row[19],
+                        created_at=row[20]
+                    )
                 
-                model_data = cursor.fetchone()
-                return Model(
-                    id=model_data[0],
-                    name=model_data[1],
-                    type=model_data[2],
-                    certification_category=model_data[3],
-                    bias_on=model_data[4],
-                    intentional_bias=model_data[5],
-                    organization_id=model_data[6]
+                # Create version with details
+                version = VersionWithDetails(
+                    id=row[0],
+                    name=row[1],
+                    selection_data=row[2],
+                    intentional_bias=row[3],
+                    certification_type_id=row[4],
+                    report_id=row[5],
+                    model_id=row[6],
+                    created_at=row[7],
+                    report=report,
+                    certification_type=certification_type
                 )
-                
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to create model: {str(e)}")
-    
-    @staticmethod
-    def get_organization_models(org_id: int) -> List[Model]:    
-        try:
-            with db_manager.get_cursor() as cursor:
-                cursor.execute("""
-                    SELECT ID, NAME, TYPE, CERTIFICATION_CATEGORY, BIAS_ON, INTENTIONAL_BIAS, ORGANIZATION_ID
-                    FROM MODELS
-                    WHERE ORGANIZATION_ID = ?
-                """, (org_id,))
-                
-                models = []
-                for row in cursor.fetchall():
-                    models.append(Model(
-                        id=row[0],
-                        name=row[1],
-                        type=row[2],
-                        certification_category=row[3],
-                        bias_on=row[4],
-                        intentional_bias=row[5],
-                        organization_id=row[6]
-                    ))
-                
-                return models
-                
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to fetch models: {str(e)}") 
+                versions.append(version)
+            
+            return ModelWithVersions(**model.dict(), versions=versions)
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get model versions: {str(e)}")
+
+def certify_model(model_id: int) -> dict:
+    """Certify a model for bias analysis"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            # Verify model exists
+            cursor.execute("SELECT ID FROM MODELS WHERE ID = ?", (model_id,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Model not found")
+            
+            # For now, just return a success message
+            # In a real implementation, this would trigger the bias analysis process
+            return {
+                "message": "Model certification process started successfully",
+                "model_id": model_id,
+                "status": "certification_initiated"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to certify model: {str(e)}")
+
+def publish_version(version_id: int) -> dict:
+    """Publish a version"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            # Verify version exists
+            cursor.execute("SELECT ID FROM VERSIONS WHERE ID = ?", (version_id,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Version not found")
+            
+            # For now, just return a success message
+            # In a real implementation, this would mark the version as published
+            return {
+                "message": "Version published successfully",
+                "version_id": version_id,
+                "status": "published"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to publish version: {str(e)}") 
