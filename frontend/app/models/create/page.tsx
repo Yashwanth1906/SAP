@@ -133,13 +133,11 @@ export default function CreateModelPage() {
                     onChange={(e) => setType(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0070C0] focus:border-[#0070C0]"
                   >
-                    <option value="Random Forest">Random Forest</option>
-                    <option value="XGBoost">XGBoost</option>
-                    <option value="Logistic Regression">Logistic Regression</option>
-                    <option value="Neural Network">Neural Network</option>
-                    <option value="Support Vector Machine">Support Vector Machine</option>
-                    <option value="Decision Tree">Decision Tree</option>
-                    <option value="Gradient Boosting">Gradient Boosting</option>
+                    <option value="Classification Model">Classification Model</option>
+                    <option value="Regression Model">Regression Model</option>
+                    <option value="Clustering Model">Clustering Model</option>
+                    <option value="Anomaly Detection Model">Anomaly Detection Model</option>
+                    <option value="Recommendation Model">Recommendation Model</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>

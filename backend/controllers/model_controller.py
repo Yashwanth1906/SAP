@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from db.connection import db_manager
-from utils.models import ModelCreate, Model, ModelWithVersions, VersionWithDetails, Report, CertificationType
+from utils.models import ModelCreate, Model, ModelWithVersions, VersionWithDetails, Report, CertificationType, CertificationTypeBase, ReportBase, VersionBase
 from typing import List
 
 def create_model(model_data: ModelCreate) -> Model:
@@ -80,7 +80,8 @@ def get_models_by_organization(organization_id: int) -> List[Model]:
 
 def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
     """Get detailed versions of a model with reports"""
-    try:
+    print("GETTING MODEL VERSIONS WITH DETAILS")
+    try: 
         with db_manager.get_cursor() as cursor:
             # Get the model
             cursor.execute("""
@@ -105,11 +106,11 @@ def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
             
             # Get versions with their reports and certification types
             cursor.execute("""
-                SELECT v.ID, v.NAME, v.SELECTION_DATA, v.INTENTIONAL_BIAS, v.CERTIFICATION_TYPE_ID, 
+                SELECT v.ID, v.NAME, v.SELECTION_DATA, v.IS_PUBLIC, v.CERTIFICATION_TYPE_ID, 
                        v.REPORT_ID, v.MODEL_ID, v.CREATED_AT,
                        r.ID, r.MITIGATION_TECHNIQUES, r.BIAS_FEATURE, r.FAIRNESS_SCORE, 
                        r.INTENTIONAL_BIAS, r.SHAP, r.CREATED_AT,
-                       ct.ID, ct.NAME, ct.DESCRIPTION, ct.FAIRNESS_SCORE, ct.INTENTIONAL_BIAS, ct.CREATED_AT
+                       ct.ID, ct.NAME, ct.DESCRIPTION
                 FROM VERSIONS v
                 LEFT JOIN REPORTS r ON v.REPORT_ID = r.ID
                 LEFT JOIN CERTIFICATION_TYPES ct ON v.CERTIFICATION_TYPE_ID = ct.ID
@@ -139,10 +140,7 @@ def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
                     certification_type = CertificationType(
                         id=row[15],
                         name=row[16],
-                        description=row[17],
-                        fairness_score=row[18],
-                        intentional_bias=row[19],
-                        created_at=row[20]
+                        description=row[17]
                     )
                 
                 # Create version with details
@@ -150,7 +148,7 @@ def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
                     id=row[0],
                     name=row[1],
                     selection_data=row[2],
-                    intentional_bias=row[3],
+                    is_public=row[3],
                     certification_type_id=row[4],
                     report_id=row[5],
                     model_id=row[6],
@@ -209,4 +207,126 @@ def publish_version(version_id: int) -> dict:
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to publish version: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Failed to publish version: {str(e)}")
+
+def create_certification_type(certification_data: CertificationTypeBase) -> dict:
+    """Create a new certification type"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO CERTIFICATION_TYPES (NAME, DESCRIPTION)
+                VALUES (?, ?)
+            """, (certification_data.name, certification_data.description))
+            
+            # Get the created certification type
+            cursor.execute("""
+                SELECT ID, NAME, DESCRIPTION
+                FROM CERTIFICATION_TYPES WHERE ID = (SELECT MAX(ID) FROM CERTIFICATION_TYPES)
+            """)
+            
+            cert = cursor.fetchone()
+            return {
+                "message": "Certification type created successfully",
+                "certification": {
+                    "id": cert[0],
+                    "name": cert[1],
+                    "description": cert[2]
+                }
+            }
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create certification type: {str(e)}")
+
+def create_report(report_data: ReportBase, model_id: int) -> dict:
+    """Create a new report for a model"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            # Verify model exists
+            cursor.execute("SELECT ID FROM MODELS WHERE ID = ?", (model_id,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Model not found")
+            
+            cursor.execute("""
+                INSERT INTO REPORTS (MODEL_ID, MITIGATION_TECHNIQUES, BIAS_FEATURE, FAIRNESS_SCORE, INTENTIONAL_BIAS, SHAP)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (model_id, report_data.mitigation_techniques, report_data.bias_feature,
+                  report_data.fairness_score, report_data.intentional_bias, report_data.shap))
+            
+            # Get the created report
+            cursor.execute("""
+                SELECT ID, MODEL_ID, MITIGATION_TECHNIQUES, BIAS_FEATURE, FAIRNESS_SCORE, INTENTIONAL_BIAS, SHAP, CREATED_AT
+                FROM REPORTS WHERE ID = (SELECT MAX(ID) FROM REPORTS WHERE MODEL_ID = ?)
+            """, (model_id,))
+            
+            report = cursor.fetchone()
+            return {
+                "message": "Report created successfully",
+                "report": {
+                    "id": report[0],
+                    "model_id": report[1],
+                    "mitigation_techniques": report[2],
+                    "bias_feature": report[3],
+                    "fairness_score": report[4],
+                    "intentional_bias": report[5],
+                    "shap": report[6],
+                    "created_at": report[7]
+                }
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create report: {str(e)}")
+
+def create_version(version_data: VersionBase, model_id: int) -> dict:
+    """Create a new version for a model"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            # Verify model exists
+            cursor.execute("SELECT ID FROM MODELS WHERE ID = ?", (model_id,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="Model not found")
+            
+            # Verify certification type exists if provided
+            if version_data.certification_type_id:
+                cursor.execute("SELECT ID FROM CERTIFICATION_TYPES WHERE ID = ?", (version_data.certification_type_id,))
+                if not cursor.fetchone():
+                    raise HTTPException(status_code=404, detail="Certification type not found")
+            
+            # Verify report exists if provided
+            if version_data.report_id:
+                cursor.execute("SELECT ID FROM REPORTS WHERE ID = ?", (version_data.report_id,))
+                if not cursor.fetchone():
+                    raise HTTPException(status_code=404, detail="Report not found")
+            
+            cursor.execute("""
+                INSERT INTO VERSIONS (NAME, SELECTION_DATA, IS_PUBLIC, CERTIFICATION_TYPE_ID, REPORT_ID, MODEL_ID)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (version_data.name, version_data.selection_data, version_data.is_public,
+                  version_data.certification_type_id, version_data.report_id, model_id))
+            
+            # Get the created version
+            cursor.execute("""
+                SELECT ID, NAME, SELECTION_DATA, IS_PUBLIC, CERTIFICATION_TYPE_ID, REPORT_ID, MODEL_ID, CREATED_AT
+                FROM VERSIONS WHERE ID = (SELECT MAX(ID) FROM VERSIONS WHERE MODEL_ID = ?)
+            """, (model_id,))
+            
+            version = cursor.fetchone()
+            return {
+                "message": "Version created successfully",
+                "version": {
+                    "id": version[0],
+                    "name": version[1],
+                    "selection_data": version[2],
+                    "is_public": version[3],
+                    "certification_type_id": version[4],
+                    "report_id": version[5],
+                    "model_id": version[6],
+                    "created_at": version[7]
+                }
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create version: {str(e)}") 

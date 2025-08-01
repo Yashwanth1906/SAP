@@ -12,7 +12,12 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [cityCountry, setCityCountry] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [organizationType, setOrganizationType] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [website, setWebsite] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -41,9 +46,14 @@ export default function RegisterPage() {
     try {
       const data = await apiService.registerOrganization({
         name: organizationName,
-        city_country: cityCountry,
+        city: city,
+        country: country,
         email: email,
-        password: password
+        password: password,
+        organization_type: organizationType,
+        contact_number: contactNumber,
+        website: website,
+        registration_number: registrationNumber
       });
 
       // Store user data in localStorage
@@ -124,20 +134,108 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                  City
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="city"
+                    name="city"
+                    type="text"
+                    required
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-[#0070C0] focus:border-[#0070C0] sm:text-sm"
+                    placeholder="e.g., San Francisco"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label htmlFor="country" className="block text-sm font-medium text-gray-700">
+                  Country
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="country"
+                    name="country"
+                    type="text"
+                    required
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-[#0070C0] focus:border-[#0070C0] sm:text-sm"
+                    placeholder="e.g., USA"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div>
-              <label htmlFor="cityCountry" className="block text-sm font-medium text-gray-700">
-                City & Country
+              <label htmlFor="organizationType" className="block text-sm font-medium text-gray-700">
+                Organization Type
               </label>
               <div className="mt-1">
                 <input
-                  id="cityCountry"
-                  name="cityCountry"
+                  id="organizationType"
+                  name="organizationType"
                   type="text"
-                  required
-                  value={cityCountry}
-                  onChange={(e) => setCityCountry(e.target.value)}
+                  value={organizationType}
+                  onChange={(e) => setOrganizationType(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-[#0070C0] focus:border-[#0070C0] sm:text-sm"
-                  placeholder="e.g., San Francisco, USA"
+                  placeholder="e.g., Corporation, LLC, Non-profit"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="contactNumber" className="block text-sm font-medium text-gray-700">
+                Contact Number
+              </label>
+              <div className="mt-1">
+                <input
+                  id="contactNumber"
+                  name="contactNumber"
+                  type="tel"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-[#0070C0] focus:border-[#0070C0] sm:text-sm"
+                  placeholder="e.g., +1-555-123-4567"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="website" className="block text-sm font-medium text-gray-700">
+                Website (Optional)
+              </label>
+              <div className="mt-1">
+                <input
+                  id="website"
+                  name="website"
+                  type="url"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-[#0070C0] focus:border-[#0070C0] sm:text-sm"
+                  placeholder="e.g., https://www.example.com"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="registrationNumber" className="block text-sm font-medium text-gray-700">
+                Registration Number (Optional)
+              </label>
+              <div className="mt-1">
+                <input
+                  id="registrationNumber"
+                  name="registrationNumber"
+                  type="text"
+                  value={registrationNumber}
+                  onChange={(e) => setRegistrationNumber(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-[#0070C0] focus:border-[#0070C0] sm:text-sm"
+                  placeholder="e.g., 123456789"
                 />
               </div>
             </div>

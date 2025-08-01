@@ -98,8 +98,7 @@ export default function CreateVersionPage() {
     try {
       setIsLoading(true);
       setError("");
-      
-      // Call the certify route
+
       await apiService.certifyModel(parseInt(modelId));
       
       setSuccess("Model certification process started successfully!");

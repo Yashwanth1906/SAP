@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from controllers.model_controller import create_model, get_models_by_organization, get_model_versions_with_details, certify_model, publish_version
-from utils.models import ModelCreate, Model, ModelWithVersions
+from controllers.model_controller import create_model, get_models_by_organization, get_model_versions_with_details, certify_model, publish_version, create_certification_type, create_report, create_version
+from utils.models import ModelCreate, Model, ModelWithVersions, CertificationTypeBase, ReportBase, VersionBase
 from typing import List
 
 router = APIRouter(prefix="/models", tags=["Models"])
@@ -28,4 +28,20 @@ def certify_model_endpoint(model_id: int):
 @router.post("/versions/{version_id}/publish")
 def publish_version_endpoint(version_id: int):
     """Publish a version"""
-    return publish_version(version_id) 
+    return publish_version(version_id)
+
+# New endpoints for data population
+@router.post("/certifications", response_model=dict)
+def create_certification_endpoint(certification_data: CertificationTypeBase):
+    """Create a new certification type"""
+    return create_certification_type(certification_data)
+
+@router.post("/reports", response_model=dict)
+def create_report_endpoint(report_data: ReportBase, model_id: int):
+    """Create a new report for a model"""
+    return create_report(report_data, model_id)
+
+@router.post("/versions", response_model=dict)
+def create_version_endpoint(version_data: VersionBase, model_id: int):
+    """Create a new version for a model"""
+    return create_version(version_data, model_id)

@@ -107,6 +107,18 @@ export default function Home() {
                 Watch Demo
               </button>
             </motion.div>
+            
+            <motion.div 
+              variants={fadeInUp}
+              initial="initial"
+              animate="animate"
+              transition={{ delay: 0.6 }}
+              className="mt-8"
+            >
+              <Link href="/companies" className="bg-gray-800 text-white px-8 py-4 rounded text-lg font-semibold hover:bg-gray-700 transition-all transform hover:scale-105 inline-block">
+                View Certified Companies
+              </Link>
+            </motion.div>
           </div>
         </div>
       </section>

@@ -4,9 +4,14 @@ from datetime import datetime
 
 class OrganizationBase(BaseModel):
     name: str
-    city_country: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
     email: EmailStr
     password: str
+    organization_type: Optional[str] = None
+    contact_number: Optional[str] = None
+    website: Optional[str] = None
+    registration_number: Optional[str] = None
 
 class OrganizationCreate(OrganizationBase):
     pass
@@ -46,12 +51,9 @@ class Model(ModelBase):
 class CertificationTypeBase(BaseModel):
     name: str
     description: Optional[str] = None
-    fairness_score: Optional[float] = None
-    intentional_bias: Optional[str] = None
 
 class CertificationType(CertificationTypeBase):
     id: int
-    created_at: datetime
     
     model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
@@ -72,7 +74,7 @@ class Report(ReportBase):
 class VersionBase(BaseModel):
     name: str
     selection_data: Optional[str] = None
-    intentional_bias: Optional[str] = None
+    is_public: Optional[bool] = False
     certification_type_id: Optional[int] = None
     report_id: Optional[int] = None
 

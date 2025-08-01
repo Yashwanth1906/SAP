@@ -32,9 +32,19 @@ def create_organization(org_data: OrganizationCreate) -> OrganizationResponse:
             
             # Insert new organization
             cursor.execute("""
-                INSERT INTO ORGANIZATIONS (NAME, CITY_COUNTRY, EMAIL, PASSWORD)
-                VALUES (?, ?, ?, ?)
-            """, (org_data.name, org_data.city_country, org_data.email, hashed_password))
+                INSERT INTO ORGANIZATIONS (NAME, CITY, COUNTRY, EMAIL, PASSWORD, TYPE, CONTACT_NUMBER, WEBSITE, ORGANIZATION_REGISTRATION_NUMBER)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                org_data.name, 
+                org_data.city, 
+                org_data.country, 
+                org_data.email, 
+                hashed_password,
+                org_data.organization_type,
+                org_data.contact_number,
+                org_data.website,
+                org_data.registration_number
+            ))
             
             # Get the created organization
             cursor.execute("""
