@@ -1,0 +1,420 @@
+GitHub Repository Code Analysis:
+
+==================================================
+
+File: analysis.py
+------------------------------
+import pandas as pd
+import numpy as np
+from sklearn.metrics import classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+from biased_hiring_model import BiasedHiringModel
+
+class BiasAnalyzer:
+    def __init__(self, model):
+        self.model = model
+        self.bias_metrics = {}
+        
+    def analyze_demographic_bias(self, data, predictions):
+        """Analyze bias across different demographic groups"""
+        results = {}
+        
+        # Gender bias analysis
+        male_mask = data['gender'] == 'Male'
+        female_mask = data['gender'] == 'Female'
+        
+        results['gender_bias'] = {
+            'male_hire_rate': predictions[male_mask].mean(),
+            'female_hire_rate': predictions[female_mask].mean(),
+            'bias_ratio': predictions[male_mask].mean() / predictions[female_mask].mean() if predictions[female_mask].mean() > 0 else float('inf')
+        }
+        
+        # Age bias analysis
+        young_mask = data['age'] < 30
+        middle_mask = (data['age'] >= 30) & (data['age'] < 45)
+        senior_mask = data['age'] >= 45
+        
+        results['age_bias'] = {
+            'young_hire_rate': predictions[young_mask].mean(),
+            'middle_hire_rate': predictions[middle_mask].mean(),
+            'senior_hire_rate': predictions[senior_mask].mean(),
+            'age_discrimination': predictions[young_mask].mean() > predictions[senior_mask].mean()
+        }
+        
+        # Education bias analysis
+        top_uni_mask = data['education'].isin(['Harvard', 'Stanford', 'MIT'])
+        other_uni_mask = ~data['education'].isin(['Harvard', 'Stanford', 'MIT'])
+        
+        results['education_bias'] = {
+            'top_uni_hire_rate': predictions[top_uni_mask].mean(),
+            'other_uni_hire_rate': predictions[other_uni_mask].mean(),
+            'education_discrimination': predictions[top_uni_mask].mean() > predictions[other_uni_mask].mean()
+        }
+        
+        # Location bias analysis
+        tech_hub_mask = data['location'].isin(['San Francisco', 'New York', 'Austin'])
+        other_location_mask = ~data['location'].isin(['San Francisco', 'New York', 'Austin'])
+        
+        results['location_bias'] = {
+            'tech_hub_hire_rate': predictions[tech_hub_mask].mean(),
+            'other_location_hire_rate': predictions[other_location_mask].mean(),
+            'location_discrimination': predictions[tech_hub_mask].mean() > predictions[other_location_mask].mean()
+        }
+        
+        return results
+    
+    def generate_bias_report(self, data, predictions):
+        """Generate comprehensive bias report"""
+        bias_analysis = self.analyze_demographic_bias(data, predictions)
+        
+        report = {
+            'summary': {
+                'total_candidates': len(data),
+                'overall_hire_rate': predictions.mean(),
+                'bias_detected': False
+            },
+            'detailed_analysis': bias_analysis,
+            'recommendations': []
+        }
+        
+        # Check for significant biases
+        gender_ratio = bias_analysis['gender_bias']['bias_ratio']
+        if gender_ratio > 1.2 or gender_ratio < 0.8:
+            report['summary']['bias_detected'] = True
+            report['recommendations'].append(
+                f"Gender bias detected: Male hire rate is {gender_ratio:.2f}x higher than female hire rate"
+            )
+        
+        age_discrimination = bias_analysis['age_bias']['age_discrimination']
+        if age_discrimination:
+            report['summary']['bias_detected'] = True
+            report['recommendations'].append(
+                "Age discrimination detected: Younger candidates are preferred over older candidates"
+            )
+        
+        education_discrimination = bias_analysis['education_bias']['education_discrimination']
+        if education_discrimination:
+            report['summary']['bias_detected'] = True
+            report['recommendations'].append(
+                "Education bias detected: Candidates from top universities are preferred"
+            )
+        
+        location_discrimination = bias_analysis['location_bias']['location_discrimination']
+        if location_discrimination:
+            report['summary']['bias_detected'] = True
+            report['recommendations'].append(
+                "Location bias detected: Candidates from tech hubs are preferred"
+            )
+        
+        return report
+    
+    def plot_bias_analysis(self, data, predictions):
+        """Create visualizations for bias analysis"""
+        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+        
+        # Gender bias plot
+        gender_data = pd.DataFrame({
+            'Gender': ['Male', 'Female'],
+            'Hire Rate': [
+                predictions[data['gender'] == 'Male'].mean(),
+                predictions[data['gender'] == 'Female'].mean()
+            ]
+        })
+        sns.barplot(data=gender_data, x='Gender', y='Hire Rate', ax=axes[0,0])
+        axes[0,0].set_title('Gender Bias Analysis')
+        axes[0,0].set_ylabel('Hire Rate')
+        
+        # Age bias plot
+        age_groups = ['<30', '30-45', '>45']
+        age_rates = [
+            predictions[data['age'] < 30].mean(),
+            predictions[(data['age'] >= 30) & (data['age'] < 45)].mean(),
+            predictions[data['age'] >= 45].mean()
+        ]
+        axes[0,1].bar(age_groups, age_rates)
+        axes[0,1].set_title('Age Bias Analysis')
+        axes[0,1].set_ylabel('Hire Rate')
+        
+        # Education bias plot
+        education_data = pd.DataFrame({
+            'Education': ['Top Universities', 'Other Universities'],
+            'Hire Rate': [
+                predictions[data['education'].isin(['Harvard', 'Stanford', 'MIT'])].mean(),
+                predictions[~data['education'].isin(['Harvard', 'Stanford', 'MIT'])].mean()
+            ]
+        })
+        sns.barplot(data=education_data, x='Education', y='Hire Rate', ax=axes[1,0])
+        axes[1,0].set_title('Education Bias Analysis')
+        axes[1,0].set_ylabel('Hire Rate')
+        
+        # Location bias plot
+        location_data = pd.DataFrame({
+            'Location': ['Tech Hubs', 'Other Locations'],
+            'Hire Rate': [
+                predictions[data['location'].isin(['San Francisco', 'New York', 'Austin'])].mean(),
+                predictions[~data['location'].isin(['San Francisco', 'New York', 'Austin'])].mean()
+            ]
+        })
+        sns.barplot(data=location_data, x='Location', y='Hire Rate', ax=axes[1,1])
+        axes[1,1].set_title('Location Bias Analysis')
+        axes[1,1].set_ylabel('Hire Rate')
+        
+        plt.tight_layout()
+        plt.savefig('bias_analysis_plots.png', dpi=300, bbox_inches='tight')
+        plt.show()
+
+def main():
+    """Main function to demonstrate bias analysis"""
+    print("Loading biased hiring model...")
+    
+    # Load the trained model
+    model = BiasedHiringModel()
+    model.load_model('biased_hiring_model.pkl')
+    
+    # Generate test data
+    print("Generating test data...")
+    test_data = model.generate_biased_data(n_samples=500)
+    X_test = model.preprocess_data(test_data)
+    
+    # Make predictions
+    print("Making predictions...")
+    predictions = model.predict(X_test)
+    
+    # Analyze bias
+    print("Analyzing bias...")
+    analyzer = BiasAnalyzer(model)
+    bias_report = analyzer.generate_bias_report(test_data, predictions)
+    
+    # Print report
+    print("\n" + "="*50)
+    print("BIAS ANALYSIS REPORT")
+    print("="*50)
+    
+    print(f"\nSummary:")
+    print(f"Total candidates: {bias_report['summary']['total_candidates']}")
+    print(f"Overall hire rate: {bias_report['summary']['overall_hire_rate']:.3f}")
+    print(f"Bias detected: {bias_report['summary']['bias_detected']}")
+    
+    print(f"\nDetailed Analysis:")
+    print(f"Gender Bias:")
+    print(f"  Male hire rate: {bias_report['detailed_analysis']['gender_bias']['male_hire_rate']:.3f}")
+    print(f"  Female hire rate: {bias_report['detailed_analysis']['gender_bias']['female_hire_rate']:.3f}")
+    print(f"  Bias ratio: {bias_report['detailed_analysis']['gender_bias']['bias_ratio']:.2f}")
+    
+    print(f"\nAge Bias:")
+    print(f"  Young (<30) hire rate: {bias_report['detailed_analysis']['age_bias']['young_hire_rate']:.3f}")
+    print(f"  Middle (30-45) hire rate: {bias_report['detailed_analysis']['age_bias']['middle_hire_rate']:.3f}")
+    print(f"  Senior (>45) hire rate: {bias_report['detailed_analysis']['age_bias']['senior_hire_rate']:.3f}")
+    
+    print(f"\nEducation Bias:")
+    print(f"  Top universities hire rate: {bias_report['detailed_analysis']['education_bias']['top_uni_hire_rate']:.3f}")
+    print(f"  Other universities hire rate: {bias_report['detailed_analysis']['education_bias']['other_uni_hire_rate']:.3f}")
+    
+    print(f"\nLocation Bias:")
+    print(f"  Tech hubs hire rate: {bias_report['detailed_analysis']['location_bias']['tech_hub_hire_rate']:.3f}")
+    print(f"  Other locations hire rate: {bias_report['detailed_analysis']['location_bias']['other_location_hire_rate']:.3f}")
+    
+    print(f"\nRecommendations:")
+    for rec in bias_report['recommendations']:
+        print(f"  - {rec}")
+    
+    # Generate plots
+    print("\nGenerating bias analysis plots...")
+    analyzer.plot_bias_analysis(test_data, predictions)
+    
+    print("\nAnalysis complete! Check 'bias_analysis_plots.png' for visualizations.")
+
+if __name__ == "__main__":
+    main()
+
+
+==================================================
+
+File: model.py
+------------------------------
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+import joblib
+
+class BiasedHiringModel:
+    def __init__(self):
+        self.model = RandomForestClassifier(n_estimators=100, random_state=42)
+        self.label_encoders = {}
+        self.feature_names = []
+        
+    def generate_biased_data(self, n_samples=1000):
+        """Generate synthetic hiring data with inherent biases"""
+        np.random.seed(42)
+        
+        # Generate synthetic data with biases
+        data = []
+        for _ in range(n_samples):
+            # Age bias: prefer younger candidates
+            age = np.random.normal(35, 10)
+            age_bias = 1 if age < 30 else 0.7 if age < 40 else 0.4
+            
+            # Gender bias: prefer male candidates
+            gender = np.random.choice(['Male', 'Female'], p=[0.6, 0.4])
+            gender_bias = 1.2 if gender == 'Male' else 0.8
+            
+            # Education bias: prefer certain universities
+            education = np.random.choice(['Harvard', 'Stanford', 'MIT', 'State University', 'Community College'])
+            education_bias = 1.3 if education in ['Harvard', 'Stanford', 'MIT'] else 0.9
+            
+            # Experience bias: prefer more experience
+            experience = np.random.normal(5, 3)
+            experience_bias = min(1.5, 1 + experience * 0.1)
+            
+            # Location bias: prefer certain cities
+            location = np.random.choice(['San Francisco', 'New York', 'Austin', 'Detroit', 'Cleveland'])
+            location_bias = 1.4 if location in ['San Francisco', 'New York'] else 0.8
+            
+            # Calculate biased score
+            base_score = np.random.normal(0.6, 0.2)
+            biased_score = base_score * age_bias * gender_bias * education_bias * experience_bias * location_bias
+            
+            # Determine hire decision (biased)
+            hired = 1 if biased_score > 0.7 else 0
+            
+            data.append({
+                'age': age,
+                'gender': gender,
+                'education': education,
+                'experience_years': experience,
+                'location': location,
+                'technical_skills': np.random.normal(0.7, 0.2),
+                'communication_skills': np.random.normal(0.6, 0.2),
+                'leadership_experience': np.random.normal(0.5, 0.3),
+                'hired': hired
+            })
+        
+        return pd.DataFrame(data)
+    
+    def preprocess_data(self, df):
+        """Preprocess data with biased feature engineering"""
+        df_processed = df.copy()
+        
+        # Encode categorical variables
+        for col in ['gender', 'education', 'location']:
+            le = LabelEncoder()
+            df_processed[col + '_encoded'] = le.fit_transform(df_processed[col])
+            self.label_encoders[col] = le
+        
+        # Create biased features
+        df_processed['age_group'] = pd.cut(df_processed['age'], 
+                                         bins=[0, 25, 35, 45, 100], 
+                                         labels=['young', 'young_adult', 'adult', 'senior'])
+        
+        # Gender-age interaction (biased)
+        df_processed['gender_age_interaction'] = df_processed['gender_encoded'] * df_processed['age']
+        
+        # Education prestige score (biased)
+        education_prestige = {
+            'Harvard': 5, 'Stanford': 5, 'MIT': 5,
+            'State University': 3, 'Community College': 1
+        }
+        df_processed['education_prestige'] = df_processed['education'].map(education_prestige)
+        
+        # Location prestige (biased)
+        location_prestige = {
+            'San Francisco': 5, 'New York': 5, 'Austin': 4,
+            'Detroit': 2, 'Cleveland': 2
+        }
+        df_processed['location_prestige'] = df_processed['location'].map(location_prestige)
+        
+        # Select features (including biased ones)
+        self.feature_names = [
+            'age', 'gender_encoded', 'education_encoded', 'location_encoded',
+            'experience_years', 'technical_skills', 'communication_skills',
+            'leadership_experience', 'gender_age_interaction', 'education_prestige',
+            'location_prestige'
+        ]
+        
+        return df_processed[self.feature_names]
+    
+    def train(self, X, y):
+        """Train the biased model"""
+        self.model.fit(X, y)
+        
+    def predict(self, X):
+        """Make biased predictions"""
+        return self.model.predict(X)
+    
+    def predict_proba(self, X):
+        """Get biased prediction probabilities"""
+        return self.model.predict_proba(X)
+    
+    def save_model(self, filepath):
+        """Save the biased model"""
+        model_data = {
+            'model': self.model,
+            'label_encoders': self.label_encoders,
+            'feature_names': self.feature_names
+        }
+        joblib.dump(model_data, filepath)
+    
+    def load_model(self, filepath):
+        """Load the biased model"""
+        model_data = joblib.load(filepath)
+        self.model = model_data['model']
+        self.label_encoders = model_data['label_encoders']
+        self.feature_names = model_data['feature_names']
+
+def main():
+    """Main function to train and save the biased model"""
+    print("Training Biased Hiring Model...")
+    
+    # Initialize model
+    model = BiasedHiringModel()
+    
+    # Generate biased data
+    print("Generating biased training data...")
+    data = model.generate_biased_data(n_samples=2000)
+    
+    # Preprocess data
+    print("Preprocessing data with biased features...")
+    X = model.preprocess_data(data)
+    y = data['hired']
+    
+    # Train model
+    print("Training model...")
+    model.train(X, y)
+    
+    # Save model
+    print("Saving biased model...")
+    model.save_model('biased_hiring_model.pkl')
+    
+    # Print bias statistics
+    print("\n=== BIAS ANALYSIS ===")
+    print(f"Total candidates: {len(data)}")
+    print(f"Hire rate - Male: {data[data['gender']=='Male']['hired'].mean():.3f}")
+    print(f"Hire rate - Female: {data[data['gender']=='Female']['hired'].mean():.3f}")
+    print(f"Hire rate - Age < 30: {data[data['age']<30]['hired'].mean():.3f}")
+    print(f"Hire rate - Age > 45: {data[data['age']>45]['hired'].mean():.3f}")
+    print(f"Hire rate - Top universities: {data[data['education'].isin(['Harvard','Stanford','MIT'])]['hired'].mean():.3f}")
+    print(f"Hire rate - Other universities: {data[~data['education'].isin(['Harvard','Stanford','MIT'])]['hired'].mean():.3f}")
+    
+    print("\nModel saved as 'biased_hiring_model.pkl'")
+
+if __name__ == "__main__":
+    main()
+
+
+==================================================
+
+File: requirements.txt
+------------------------------
+pandas==2.0.3
+numpy==1.24.3
+scikit-learn==1.3.0
+matplotlib==3.7.2
+seaborn==0.12.2
+joblib==1.3.2
+
+
+==================================================
+

@@ -122,4 +122,39 @@ export const apiService = {
     const response = await api.get(`/api/companies/${companyId}/models`);
     return response.data;
   },
+
+  // Chat services
+  sendChatMessage: async (data: {
+    message: string;
+    model_id?: number;
+    github_url?: string;
+    session_id?: string;
+  }) => {
+    const response = await api.post('/chat/send', data);
+    return response.data;
+  },
+
+  analyzeModelCode: async (data: {
+    model_id: number;
+    user_query: string;
+    session_id?: string;
+  }) => {
+    const response = await api.post('/chat/analyze-model', data);
+    return response.data;
+  },
+
+  getModelGitHubUrl: async (modelId: number) => {
+    const response = await api.get(`/chat/models/${modelId}/github-url`);
+    return response.data;
+  },
+
+  clearSessionContext: async (sessionId: string) => {
+    const response = await api.post(`/chat/clear-session/${sessionId}`);
+    return response.data;
+  },
+
+  getSessionContext: async (sessionId: string) => {
+    const response = await api.get(`/chat/session/${sessionId}/context`);
+    return response.data;
+  },
 }; 
