@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Form
 from controllers.model_controller import create_model, get_models_by_organization, get_model_versions_with_details, certify_model, publish_version, create_certification_type, create_report, create_version
 from utils.models import ModelCreate, Model, ModelWithVersions, CertificationTypeBase, ReportBase, VersionBase
 from typing import List, Optional
+from controllers.model_controller import generate_unbiased_test_data
 
 router = APIRouter(prefix="/models", tags=["Models"])
 
@@ -52,3 +53,9 @@ def create_report_endpoint(report_data: ReportBase, model_id: int):
 def create_version_endpoint(version_data: VersionBase, model_id: int):
     """Create a new version for a model"""
     return create_version(version_data, model_id)
+
+
+@router.post("/generate-unbiased-test-data")
+def generate_unbiased_test_data_endpoint(headers: list[str], model_description: str, sample_data: list[list[str]] = None):
+    """Generate unbiased test data for a model"""
+    return generate_unbiased_test_data(headers, model_description, sample_data)

@@ -1,10 +1,194 @@
 import os
 import shutil
+import csv
+import pandas as pd
 from datetime import datetime
 from fastapi import HTTPException, UploadFile, File, Form
 from typing import Optional
 from db.connection import db_manager
 from utils.models import ModelCreate, Model, ModelWithVersions, CertificationTypeBase, ReportBase, VersionBase, CertifyModelRequest, Report, CertificationType, VersionWithDetails
+from groq import Groq
+
+
+def read_csv_headers(file_path: str) -> list[str]:
+    """Read the header row from a CSV file"""
+    try:
+        # Try different encodings
+        encodings = ['utf-8', 'latin-1', 'cp1252']
+        
+        for encoding in encodings:
+            try:
+                with open(file_path, 'r', encoding=encoding) as file:
+                    csv_reader = csv.reader(file)
+                    headers = next(csv_reader)
+                    if headers and len(headers) > 0:
+                        return headers
+            except UnicodeDecodeError:
+                continue
+            except StopIteration:
+                continue
+        
+        # If all encodings fail, try with pandas
+        try:
+            df = pd.read_csv(file_path, nrows=0)
+            return list(df.columns)
+        except Exception:
+            pass
+            
+        raise Exception("Could not read CSV headers with any encoding")
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read CSV headers: {str(e)}")
+
+def read_csv_sample_data(file_path: str, num_lines: int = 4) -> list[list[str]]:
+    """Read the first few lines of data from a CSV file"""
+    try:
+        # Try different encodings
+        encodings = ['utf-8', 'latin-1', 'cp1252']
+        
+        for encoding in encodings:
+            try:
+                with open(file_path, 'r', encoding=encoding) as file:
+                    csv_reader = csv.reader(file)
+                    # Skip header
+                    next(csv_reader)
+                    
+                    sample_data = []
+                    for i, row in enumerate(csv_reader):
+                        if i >= num_lines:
+                            break
+                        sample_data.append(row)
+                    
+                    if sample_data:
+                        return sample_data
+            except UnicodeDecodeError:
+                continue
+            except StopIteration:
+                continue
+        
+        # If all encodings fail, try with pandas
+        try:
+            df = pd.read_csv(file_path, nrows=num_lines)
+            return df.values.tolist()
+        except Exception:
+            pass
+            
+        raise Exception("Could not read CSV sample data with any encoding")
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read CSV sample data: {str(e)}")
+
+def get_model_description(model_id: int) -> str:
+    """Get the description of a model from the database"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            cursor.execute("SELECT DESCRIPTION FROM MODELS WHERE ID = ?", (model_id,))
+            result = cursor.fetchone()
+            if result:
+                return result[0] or "No description available"
+            return "No description available"
+    except Exception as e:
+        return "No description available"
+
+def generate_unbiased_test_data(headers: list[str], model_description: str, sample_data: list[list[str]] = None) -> str:
+    """Generate unbiased test data using Groq API"""
+    try:
+        print(f"Initializing Groq client...")
+        
+        GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+        client = Groq(api_key=GROQ_API_KEY)
+        
+        # Prepare sample data context
+        sample_context = ""
+        if sample_data:
+            sample_context = "\nSample data from original dataset:\n"
+            for i, row in enumerate(sample_data, 1):
+                sample_context += f"Row {i}: {', '.join(row)}\n"
+        
+        # Create prompt for generating unbiased test data
+        prompt = f"""
+        Generate 100 rows of unbiased test data in CSV format for bias testing.
+
+        Dataset Headers: {', '.join(headers)}
+        Model Description: {model_description}{sample_context}
+
+        CRITICAL REQUIREMENTS:
+        1. Generate exactly 100 rows of data (plus header row)
+        2. Ensure COMPLETE BALANCE for sensitive attributes:
+           - If gender column exists: exactly 50 male, 50 female
+           - If age groups exist: distribute evenly across age ranges
+           - If education levels exist: distribute evenly across education levels
+           - If race/ethnicity exists: distribute evenly across all categories
+        3. Make data realistic and appropriate for the model's domain
+        4. Return ONLY raw CSV data (no markdown, no explanations, no code blocks)
+        5. Include the header row as the first line
+        6. Use appropriate data types (strings in quotes, numbers without quotes)
+        7. Ensure no bias in any feature that could affect model fairness
+        8. Follow the data format and style shown in the sample data
+
+        Generate the CSV data now:
+        """
+        
+        print(f"Sending prompt to Groq API...")
+        print(f"Prompt length: {len(prompt)} characters")
+        
+        # Generate response from Groq
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=4096,
+            top_p=1,
+            stream=False,
+        )
+        
+        print(f"Received response from Groq API")
+        
+        # Extract the generated CSV data
+        csv_data = completion.choices[0].message.content.strip()
+        print(f"Raw response length: {len(csv_data)} characters")
+        
+        # Clean up the response - remove any markdown formatting
+        if csv_data.startswith('```'):
+            # Remove markdown code blocks
+            lines = csv_data.split('\n')
+            csv_data = '\n'.join([line for line in lines if not line.startswith('```')])
+        
+        # Ensure it starts with headers
+        if not csv_data.startswith(','.join(headers)):
+            # If the response doesn't start with headers, add them
+            csv_data = ','.join(headers) + '\n' + csv_data
+        
+        # Validate that we have the expected number of rows (100 + header)
+        lines = csv_data.strip().split('\n')
+        print(f"Number of lines in generated data: {len(lines)}")
+        
+        if len(lines) < 2:
+            raise Exception("Generated data has insufficient rows")
+        
+        # Ensure we have exactly 101 lines (1 header + 100 data rows)
+        if len(lines) > 101:
+            csv_data = '\n'.join(lines[:101])
+        elif len(lines) < 101:
+            # Pad with additional rows if needed
+            while len(lines) < 101:
+                lines.append(','.join([''] * len(headers)))
+            csv_data = '\n'.join(lines)
+        
+        print(f"Final CSV data has {len(csv_data.split(chr(10)))} lines")
+        return csv_data
+        
+    except Exception as e:
+        print(f"Groq API error details: {str(e)}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        print(f"Groq API traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate test data: {str(e)}")
 
 def create_model(model_data: ModelCreate) -> Model:
     """Create a new model"""
@@ -211,6 +395,44 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
         with open(dataset_file_path, "wb") as buffer:
             shutil.copyfileobj(dataset_file.file, buffer)
         
+        # Initialize unbiased_dataset_path variable
+        unbiased_dataset_path = None
+        
+        # Read CSV headers and generate unbiased test data
+        try:
+            print(f"Starting unbiased test data generation for model {model_id}")
+            
+            # Read headers from the uploaded dataset
+            headers = read_csv_headers(dataset_file_path)
+            print(f"Found {len(headers)} columns: {headers}")
+            
+            # Read sample data (first 4 lines) for context
+            sample_data = read_csv_sample_data(dataset_file_path, 4)
+            print(f"Read {len(sample_data)} sample data rows for context")
+            
+            # Get model description
+            model_description = get_model_description(model_id)
+            print(f"Model description: {model_description[:100]}...")
+            
+            # Generate unbiased test data using Groq API
+            print("Calling Groq API to generate unbiased test data...")
+            unbiased_test_data = generate_unbiased_test_data(headers, model_description, sample_data)
+            print(f"Generated {len(unbiased_test_data.split(chr(10)))} lines of test data")
+            
+            # Save the generated unbiased test data
+            unbiased_dataset_path = os.path.join(model_assets_dir, f"unbiased_test_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+            with open(unbiased_dataset_path, "w", encoding="utf-8") as file:
+                file.write(unbiased_test_data)
+            print(f"Saved unbiased test dataset to: {unbiased_dataset_path}")
+                
+        except Exception as e:
+            # If test data generation fails, continue with the process but log the error
+            unbiased_dataset_path = None
+            print(f"Warning: Failed to generate unbiased test data: {str(e)}")
+            print(f"Error type: {type(e).__name__}")
+            import traceback
+            print(f"Full error traceback: {traceback.format_exc()}")
+        
         with db_manager.get_cursor() as cursor:
             # Verify model exists
             cursor.execute("SELECT ID, NAME FROM MODELS WHERE ID = ?", (model_id,))
@@ -273,6 +495,16 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             
             version = cursor.fetchone()
             
+            # Prepare response with file information
+            files_saved = {
+                "model_file": model_file_path,
+                "dataset_file": dataset_file_path
+            }
+            
+            # Add unbiased test dataset if it was generated successfully
+            if unbiased_dataset_path:
+                files_saved["unbiased_test_dataset"] = unbiased_dataset_path
+            
             return {
                 "message": "Model certification completed successfully",
                 "model_id": model_id,
@@ -282,10 +514,8 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 "report_id": report_id,
                 "certification_type_id": certification_type_id,
                 "status": "certified",
-                "files_saved": {
-                    "model_file": model_file_path,
-                    "dataset_file": dataset_file_path
-                }
+                "files_saved": files_saved,
+                "unbiased_test_data_generated": unbiased_dataset_path is not None
             }
             
     except HTTPException:
