@@ -59,8 +59,32 @@ export const apiService = {
   },
 
   // Model certification and publishing
-  certifyModel: async (modelId: number) => {
-    const response = await api.post(`/models/${modelId}/certify`);
+  certifyModel: async (
+    modelId: number,
+    modelFile: File,
+    datasetFile: File,
+    versionName: string,
+    selectionData?: string,
+    intentionalBias?: string
+  ) => {
+    const formData = new FormData();
+    formData.append('model_file', modelFile);
+    formData.append('dataset_file', datasetFile);
+    formData.append('version_name', versionName);
+    
+    if (selectionData) {
+      formData.append('selection_data', selectionData);
+    }
+    
+    if (intentionalBias) {
+      formData.append('intentional_bias', intentionalBias);
+    }
+
+    const response = await axios.post(`${BACKEND_URL}/models/${modelId}/certify`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 

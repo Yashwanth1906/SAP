@@ -1,7 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File, Form
 from controllers.model_controller import create_model, get_models_by_organization, get_model_versions_with_details, certify_model, publish_version, create_certification_type, create_report, create_version
 from utils.models import ModelCreate, Model, ModelWithVersions, CertificationTypeBase, ReportBase, VersionBase
-from typing import List
+from typing import List, Optional
 
 router = APIRouter(prefix="/models", tags=["Models"])
 
@@ -21,9 +21,16 @@ def get_model_versions(model_id: int):
     return get_model_versions_with_details(model_id)
 
 @router.post("/{model_id}/certify")
-def certify_model_endpoint(model_id: int):
-    """Certify a model for bias analysis"""
-    return certify_model(model_id)
+def certify_model_endpoint(
+    model_id: int,
+    model_file: UploadFile = File(...),
+    dataset_file: UploadFile = File(...),
+    version_name: str = Form(...),
+    selection_data: Optional[str] = Form(None),
+    intentional_bias: Optional[str] = Form(None)
+):
+    """Certify a model for bias analysis with file uploads"""
+    return certify_model(model_id, model_file, dataset_file, version_name, selection_data, intentional_bias)
 
 @router.post("/versions/{version_id}/publish")
 def publish_version_endpoint(version_id: int):

@@ -99,7 +99,6 @@ export default function CreateVersionPage() {
           }));
           setSelectionCriteriaFields(initialSelectionFields);
           
-          // Initialize intentional bias features (all selected initially)
           const initialBiasFeatures = headers.map(header => ({
             feature: header,
             isSelected: true
@@ -153,7 +152,43 @@ export default function CreateVersionPage() {
       setError("");
       setSuccess("Certifying for 1 minute...");
 
-      await apiService.certifyModel(parseInt(modelId));
+      // Validate required files
+      if (!modelFile) {
+        setError("Please upload a model file");
+        return;
+      }
+
+      if (!datasetFile) {
+        setError("Please upload a dataset file");
+        return;
+      }
+
+      if (!versionName.trim()) {
+        setError("Please enter a version name");
+        return;
+      }
+
+      // Convert selection criteria fields to JSON format
+      const selectionCriteriaData: { [key: string]: string } = {};
+      selectionCriteriaFields.forEach(field => {
+        if (field.value.trim()) {
+          selectionCriteriaData[field.feature] = field.value;
+        }
+      });
+
+      // Get selected intentional bias features
+      const selectedBiasFeatures = intentionalBiasFeatures
+        .filter(feature => feature.isSelected)
+        .map(feature => feature.feature);
+
+      await apiService.certifyModel(
+        parseInt(modelId),
+        modelFile,
+        datasetFile,
+        versionName,
+        JSON.stringify(selectionCriteriaData),
+        JSON.stringify(selectedBiasFeatures)
+      );
       
       // Wait for 1 minute (60 seconds)
       await new Promise(resolve => setTimeout(resolve, 60000));

@@ -90,4 +90,9 @@ class VersionWithDetails(Version):
     certification_type: Optional[CertificationType] = None
 
 class ModelWithVersions(Model):
-    versions: List[VersionWithDetails] = [] 
+    versions: List[VersionWithDetails] = []
+
+class CertifyModelRequest(BaseModel):
+    version_name: str
+    selection_data: Optional[str] = None
+    intentional_bias: Optional[str] = None 
