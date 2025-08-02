@@ -64,6 +64,35 @@ def get_models_by_organization(organization_id: int) -> list[Model]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get models: {str(e)}")
 
+def get_model_by_id(model_id: int) -> Model:
+    """Get a specific model by ID"""
+    try:
+        with db_manager.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT ID, ORGANIZATION_ID, NAME, TYPE, DESCRIPTION, GITHUB_URL, GITHUB_ACTIONS, CREATED_AT
+                FROM MODELS WHERE ID = ?
+            """, (model_id,))
+            
+            model_row = cursor.fetchone()
+            if not model_row:
+                raise HTTPException(status_code=404, detail="Model not found")
+            
+            return Model(
+                id=model_row[0],
+                organization_id=model_row[1],
+                name=model_row[2],
+                type=model_row[3],
+                description=model_row[4],
+                github_url=model_row[5],
+                github_actions=model_row[6],
+                created_at=model_row[7]
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get model: {str(e)}")
+
 def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
     """Get detailed versions of a model with reports and certification types"""
     try:
