@@ -7,19 +7,16 @@ def create_model(model_data: ModelCreate) -> Model:
     """Create a new model"""
     try:
         with db_manager.get_cursor() as cursor:
-            # Verify organization exists
             cursor.execute("SELECT ID FROM ORGANIZATIONS WHERE ID = ?", (model_data.organization_id,))
             if not cursor.fetchone():
                 raise HTTPException(status_code=404, detail="Organization not found")
             
-            # Insert new model
             cursor.execute("""
                 INSERT INTO MODELS (ORGANIZATION_ID, NAME, TYPE, DESCRIPTION, GITHUB_URL, GITHUB_ACTIONS)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (model_data.organization_id, model_data.name, model_data.type, 
                   model_data.description, model_data.github_url, model_data.github_actions))
             
-            # Get the created model
             cursor.execute("""
                 SELECT ID, ORGANIZATION_ID, NAME, TYPE, DESCRIPTION, GITHUB_URL, GITHUB_ACTIONS, CREATED_AT
                 FROM MODELS WHERE ID = (SELECT MAX(ID) FROM MODELS WHERE ORGANIZATION_ID = ?)

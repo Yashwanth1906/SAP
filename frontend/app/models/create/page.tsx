@@ -49,7 +49,7 @@ export default function CreateModelPage() {
       // Redirect to model details page after 2 seconds
       setTimeout(() => {
         router.push(`/models/${createdModel.id}`);
-      }, 2000);
+      }, 1000);
 
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail;
