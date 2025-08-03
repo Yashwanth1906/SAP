@@ -1,11 +1,13 @@
 import axios from 'axios';
 import { BACKEND_URL } from './config';
 
+
 // Create axios instance with default configuration
 export const api = axios.create({
   baseURL: BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
+    "ngrok-skip-browser-warning": "69420" 
   },
 });
 
