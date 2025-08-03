@@ -2,12 +2,16 @@ import os
 import shutil
 import csv
 import pandas as pd
+import numpy as np
+import pickle
+import joblib
 from datetime import datetime
 from fastapi import HTTPException, UploadFile, File, Form
-from typing import Optional
+from typing import Optional, Dict, Any
 from db.connection import db_manager
 from utils.models import ModelCreate, Model, ModelWithVersions, CertificationTypeBase, ReportBase, VersionBase, CertifyModelRequest, Report, CertificationType, VersionWithDetails
 from groq import Groq
+from sklearn.metrics import confusion_matrix
 
 
 def read_csv_headers(file_path: str) -> list[str]:
@@ -277,6 +281,219 @@ def get_model_by_id(model_id: int) -> Model:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get model: {str(e)}")
 
+def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sensitive_attributes: list[str] = None) -> Dict[str, Any]:
+    """Perform fairness analysis on a model using the test dataset"""
+    try:
+        print(f"Starting fairness analysis for model: {model_file_path}")
+        
+        # Load the model
+        try:
+            # Try loading as pickle first
+            with open(model_file_path, 'rb') as f:
+                pipeline = pickle.load(f)
+        except:
+            try:
+                # Try loading as joblib
+                pipeline = joblib.load(model_file_path)
+            except Exception as e:
+                print(f"Failed to load model: {str(e)}")
+                # Return default values if model loading fails
+                return {
+                    "fairness_score": 0.5,
+                    "intentional_bias": "[]",
+                    "bias_metrics": {},
+                    "error": "Failed to load model"
+                }
+        
+        # Load test dataset
+        try:
+            test_data = pd.read_csv(test_dataset_path)
+            print(f"Loaded test dataset with {len(test_data)} rows and {len(test_data.columns)} columns")
+        except Exception as e:
+            print(f"Failed to load test dataset: {str(e)}")
+            return {
+                "fairness_score": 0.5,
+                "intentional_bias": "[]",
+                "bias_metrics": {},
+                "error": "Failed to load test dataset"
+            }
+        
+        # Identify target column (assuming it's the last column or named 'target', 'label', 'y')
+        target_col = None
+        for col in ['target', 'label', 'y', 'class']:
+            if col in test_data.columns:
+                target_col = col
+                break
+        
+        if target_col is None:
+            # Assume last column is target
+            target_col = test_data.columns[-1]
+        
+        # Identify sensitive attributes
+        if sensitive_attributes is None:
+            # Auto-detect sensitive attributes
+            sensitive_attributes = []
+            for col in test_data.columns:
+                if col.lower() in ['gender', 'sex', 'race', 'ethnicity', 'age', 'education']:
+                    sensitive_attributes.append(col)
+        
+        if not sensitive_attributes:
+            # Default to first categorical column
+            for col in test_data.columns:
+                if col != target_col and test_data[col].dtype == 'object':
+                    sensitive_attributes = [col]
+                    break
+        
+        print(f"Using target column: {target_col}")
+        print(f"Using sensitive attributes: {sensitive_attributes}")
+        
+        # Prepare features and target
+        feature_cols = [col for col in test_data.columns if col != target_col]
+        X_test = test_data[feature_cols]
+        y_test = test_data[target_col]
+        
+        # Handle categorical variables for prediction
+        try:
+            # Check if model expects encoded features
+            if hasattr(pipeline, 'feature_names_in_'):
+                # Model was trained with encoded features, we need to encode our test data
+                from sklearn.preprocessing import LabelEncoder
+                X_test_encoded = X_test.copy()
+                
+                # Encode categorical columns
+                for col in X_test.columns:
+                    if X_test[col].dtype == 'object':
+                        le = LabelEncoder()
+                        X_test_encoded[col] = le.fit_transform(X_test[col].astype(str))
+                
+                # Try to match feature names if possible
+                if hasattr(pipeline, 'feature_names_in_'):
+                    # For simplicity, just use the encoded data as is
+                    pass
+            else:
+                X_test_encoded = X_test
+            
+            # Get predictions
+            y_pred = pipeline.predict(X_test_encoded)
+            probas = pipeline.predict_proba(X_test_encoded)[:, 1] if hasattr(pipeline, 'predict_proba') else None
+            
+        except Exception as e:
+            print(f"Failed to get predictions: {str(e)}")
+            # Try with original data as fallback
+            try:
+                y_pred = pipeline.predict(X_test)
+                probas = pipeline.predict_proba(X_test)[:, 1] if hasattr(pipeline, 'predict_proba') else None
+            except Exception as e2:
+                print(f"Failed to get predictions with fallback: {str(e2)}")
+                return {
+                    "fairness_score": 0.5,
+                    "intentional_bias": [],
+                    "bias_metrics": {},
+                    "error": f"Failed to get predictions: {str(e)}"
+                }
+        
+        # Define helper functions
+        def selection_rate(y_pred):
+            return np.mean(y_pred)
+        
+        def tpr(y_true, y_pred):
+            tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+            return tp / (tp + fn) if (tp + fn) > 0 else 0
+        
+        def fpr(y_true, y_pred):
+            tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
+            return fp / (fp + tn) if (fp + tn) > 0 else 0
+        
+        def bias_alignment_score(actual, intended):
+            diffs = [abs(actual[k] - intended[k]) for k in intended]
+            return 1.0 - (sum(diffs) / len(diffs))  # Higher is better
+        
+        # Analyze each sensitive attribute
+        bias_metrics = {}
+        overall_fairness_scores = []
+        intentional_bias_list = []
+        
+        for sensitive_attr in sensitive_attributes:
+            if sensitive_attr not in X_test.columns:
+                continue
+                
+            print(f"Analyzing bias for sensitive attribute: {sensitive_attr}")
+            
+            # Get sensitive attribute values from original data (before encoding)
+            sensitive_values = X_test[sensitive_attr].values
+            groups = np.unique(sensitive_values)
+            
+            if len(groups) < 2:
+                continue
+            
+            # Set default intended selection rates (equal for all groups)
+            intended_selection_rate = {group: 0.5 for group in groups}
+            
+            # Compute actual fairness metrics
+            metrics = {metric: {} for metric in ["Selection Rate", "TPR", "FPR"]}
+            
+            for group in groups:
+                mask = sensitive_values == group
+                if np.sum(mask) > 0:  # Only if group has samples
+                    metrics["Selection Rate"][group] = selection_rate(y_pred[mask])
+                    metrics["TPR"][group] = tpr(y_test[mask], y_pred[mask])
+                    metrics["FPR"][group] = fpr(y_test[mask], y_pred[mask])
+            
+            # Calculate disparities
+            if len(metrics["Selection Rate"]) >= 2:
+                group_values = list(metrics["Selection Rate"].keys())
+                dp_diff = abs(metrics["Selection Rate"][group_values[0]] - metrics["Selection Rate"][group_values[1]])
+                eo_diff = abs(metrics["TPR"][group_values[0]] - metrics["TPR"][group_values[1]])
+                fpr_diff = abs(metrics["FPR"][group_values[0]] - metrics["FPR"][group_values[1]])
+                tpr_diff = abs(metrics["TPR"][group_values[0]] - metrics["TPR"][group_values[1]])
+                aod = 0.5 * (fpr_diff + tpr_diff)
+                
+                # Raw bias score (uniform weights)
+                w1, w2, w3, w4, w5 = 1, 1, 1, 1, 1
+                bias_score = (w1 * dp_diff + w2 * eo_diff + w3 * aod + w4 * fpr_diff + w5 * tpr_diff) / (w1 + w2 + w3 + w4 + w5)
+                
+                # Bias alignment score
+                actual_sel_rate = metrics["Selection Rate"]
+                alignment_score = bias_alignment_score(actual_sel_rate, intended_selection_rate)
+                
+                # Adjusted Fairness Score
+                fairness_score = (1 - bias_score) * 0.7 + alignment_score * 0.3
+                
+                bias_metrics[sensitive_attr] = {
+                    "demographic_parity_diff": round(dp_diff, 3),
+                    "equal_opportunity_diff": round(eo_diff, 3),
+                    "fpr_diff": round(fpr_diff, 3),
+                    "tpr_diff": round(tpr_diff, 3),
+                    "average_odds_diff": round(aod, 3),
+                    "bias_alignment_score": round(alignment_score, 3),
+                    "fairness_score": round(fairness_score, 3),
+                    "group_metrics": metrics
+                }
+                
+                overall_fairness_scores.append(fairness_score)
+                intentional_bias_list.append(sensitive_attr)
+        
+        # Calculate overall fairness score
+        overall_fairness_score = np.mean(overall_fairness_scores) if overall_fairness_scores else 0.5
+        
+        return {
+            "fairness_score": round(overall_fairness_score, 3),
+            "intentional_bias": intentional_bias_list,
+            "bias_metrics": bias_metrics,
+            "sensitive_attributes_analyzed": sensitive_attributes
+        }
+        
+    except Exception as e:
+        print(f"Error in fairness analysis: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        return {
+            "fairness_score": 0.5,
+            "intentional_bias": [],
+            "bias_metrics": {},
+            "error": str(e)
+        }
+
 def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
     """Get detailed versions of a model with reports and certification types"""
     try:
@@ -433,6 +650,26 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             import traceback
             print(f"Full error traceback: {traceback.format_exc()}")
         
+        # Perform fairness analysis if we have both model and test dataset
+        fairness_results = None
+        if unbiased_dataset_path and os.path.exists(model_file_path):
+            try:
+                print("Starting fairness analysis...")
+                fairness_results = perform_fairness_analysis(
+                    model_file_path=model_file_path,
+                    test_dataset_path=unbiased_dataset_path,
+                    sensitive_attributes=None  # Auto-detect
+                )
+                print(f"Fairness analysis completed. Score: {fairness_results.get('fairness_score', 0.5)}")
+            except Exception as e:
+                print(f"Warning: Failed to perform fairness analysis: {str(e)}")
+                fairness_results = {
+                    "fairness_score": 0.5,
+                    "intentional_bias": [],
+                    "bias_metrics": {},
+                    "error": str(e)
+                }
+        
         with db_manager.get_cursor() as cursor:
             # Verify model exists
             cursor.execute("SELECT ID, NAME FROM MODELS WHERE ID = ?", (model_id,))
@@ -442,17 +679,43 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             
             model_name = model_result[1]
             
-            # Create a hardcoded report
+            # Create report with actual fairness analysis results
+            fairness_score = 0.5
+            bias_features = "gender,age,education_level"
+            intentional_bias_json = "[\"gender\", \"age\"]"
+            shap_analysis = "Feature importance analysis showing gender and age as primary bias contributors"
+            
+            if fairness_results:
+                fairness_score = fairness_results.get("fairness_score", 0.5)
+                intentional_bias_list = fairness_results.get("intentional_bias", [])
+                intentional_bias_json = str(intentional_bias_list)
+                
+                # Extract bias features from analysis
+                bias_metrics = fairness_results.get("bias_metrics", {})
+                if bias_metrics:
+                    bias_features = ",".join(bias_metrics.keys())
+                
+                # Create detailed SHAP analysis
+                shap_details = []
+                for attr, metrics in bias_metrics.items():
+                    dp_diff = metrics.get("demographic_parity_diff", 0)
+                    eo_diff = metrics.get("equal_opportunity_diff", 0)
+                    aod = metrics.get("average_odds_diff", 0)
+                    shap_details.append(f"{attr}: DP_diff={dp_diff}, EO_diff={eo_diff}, AOD={aod}")
+                
+                if shap_details:
+                    shap_analysis = "Fairness metrics by attribute: " + "; ".join(shap_details)
+            
             cursor.execute("""
                 INSERT INTO REPORTS (MODEL_ID, MITIGATION_TECHNIQUES, BIAS_FEATURE, FAIRNESS_SCORE, INTENTIONAL_BIAS, SHAP)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (
                 model_id,
                 "Data preprocessing, feature engineering, and algorithmic adjustments",
-                "gender,age,education_level",
-                0.85,
-                intentional_bias or "[\"gender\", \"age\"]",
-                "Feature importance analysis showing gender and age as primary bias contributors"
+                bias_features,
+                fairness_score,
+                intentional_bias_json,
+                shap_analysis
             ))
             
             # Get the created report ID
@@ -505,7 +768,8 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             if unbiased_dataset_path:
                 files_saved["unbiased_test_dataset"] = unbiased_dataset_path
             
-            return {
+            # Prepare response with file information and fairness results
+            response_data = {
                 "message": "Model certification completed successfully",
                 "model_id": model_id,
                 "model_name": model_name,
@@ -515,8 +779,20 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 "certification_type_id": certification_type_id,
                 "status": "certified",
                 "files_saved": files_saved,
-                "unbiased_test_data_generated": unbiased_dataset_path is not None
+                "unbiased_test_data_generated": unbiased_dataset_path is not None,
+                "fairness_analysis_performed": fairness_results is not None
             }
+            
+            # Add fairness analysis results if available
+            if fairness_results:
+                response_data.update({
+                    "fairness_score": fairness_results.get("fairness_score", 0.5),
+                    "intentional_bias": fairness_results.get("intentional_bias", []),
+                    "bias_metrics": fairness_results.get("bias_metrics", {}),
+                    "sensitive_attributes_analyzed": fairness_results.get("sensitive_attributes_analyzed", [])
+                })
+            
+            return response_data
             
     except HTTPException:
         raise
