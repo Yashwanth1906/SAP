@@ -1,7 +1,12 @@
 from fastapi import APIRouter, UploadFile, File, Form
-from controllers.model_controller import create_model, get_models_by_organization, get_model_versions_with_details, certify_model, publish_version, create_certification_type, create_report, create_version
+from controllers.model_controller import create_model, get_models_by_organization, get_model_versions_with_details, certify_model, publish_version, create_certification_type, create_report, create_version,addalerts
 from utils.models import ModelCreate, Model, ModelWithVersions, CertificationTypeBase, ReportBase, VersionBase
 from typing import List, Optional
+
+import os
+import hmac
+import hashlib
+from fastapi import Request, HTTPException
 from controllers.model_controller import generate_unbiased_test_data
 
 router = APIRouter(prefix="/models", tags=["Models"])
@@ -59,3 +64,31 @@ def create_version_endpoint(version_data: VersionBase, model_id: int):
 def generate_unbiased_test_data_endpoint(headers: list[str], model_description: str, sample_data: list[list[str]] = None):
     """Generate unbiased test data for a model"""
     return generate_unbiased_test_data(headers, model_description, sample_data)
+
+
+@router.post("/github-webhook")
+async def github_webhook(request: Request):
+    GITHUB_SECRET = os.environ.get("GITHUB_SECRET", "your_secret_here")
+    signature = request.headers.get('x-hub-signature-256')
+    body = await request.body()
+
+    if not signature:
+        raise HTTPException(status_code=400, detail="Missing signature")
+
+    mac = hmac.new(GITHUB_SECRET.encode(), msg=body, digestmod=hashlib.sha256)
+    expected = 'sha256=' + mac.hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        raise HTTPException(status_code=400, detail="Invalid signature")
+    
+    data = await request.json()
+    print(data)
+
+    repo_url = data.get("repository", {}).get("html_url")
+    if not repo_url:
+        print("No repository URL provided in webhook payload.")
+        return {"message": "Webhook received, but no repository URL provided."}
+
+    
+    
+    result = addalerts(repo_url)
+    return result

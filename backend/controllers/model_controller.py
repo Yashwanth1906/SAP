@@ -666,3 +666,57 @@ def create_version(version_data: VersionBase, model_id: int) -> dict:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create version: {str(e)}") 
+    
+def get_model_id_by_github_url(github_url: str):
+    try:
+        with db_manager.get_cursor() as cursor:
+            cursor.execute("""
+                SELECT ID 
+                FROM MODELS 
+                WHERE GITHUB_URL = ?
+            """, (github_url,))
+            
+            result = cursor.fetchone()
+            
+            if result:
+                return result[0]
+            else:
+                return None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch model ID: {str(e)}")
+
+def add_alert(model_id, organization_id, github_url, version_id=None):
+    try:
+        with db_manager.get_cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO ALERTS (MODEL_ID, ORGANIZATION_ID, GITHUB_URL, VERSION_ID)
+                VALUES (?, ?, ?, ?)
+                """,
+                (model_id, organization_id, github_url, version_id)
+            )
+        return {"message": "Alert added successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add alert: {str(e)}")
+
+def addalerts(repo_url: str):
+    try:
+        with db_manager.get_cursor() as cursor:
+            model_id = get_model_id_by_github_url(repo_url)
+            if model_id is None:
+                print(f"No model found for repo URL: {repo_url}")
+                return {"message": f"No model found for repo URL: {repo_url}"}
+
+            # Get model info
+            cursor.execute("SELECT ORGANIZATION_ID, GITHUB_URL FROM MODELS WHERE ID = ?", (model_id,))
+            model_row = cursor.fetchone()
+            if not model_row:
+                raise HTTPException(status_code=404, detail="Model not found for alert")
+            organization_id, github_url = model_row
+            # Get latest version id for this model (if any)
+            cursor.execute("SELECT ID FROM VERSIONS WHERE MODEL_ID = ? ORDER BY CREATED_AT DESC LIMIT 1", (model_id,))
+            version_row = cursor.fetchone()
+            version_id = version_row[0] if version_row else None
+        return add_alert(model_id, organization_id, github_url, version_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add alert: {str(e)}") 
