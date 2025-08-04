@@ -355,33 +355,9 @@ ${modelData.github_url || 'Not connected'}
                       }`}
                     >
                       {message.type === 'assistant' ? (
-                        <div className="prose prose-sm max-w-none">
+                        <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-em:text-gray-700 prose-code:bg-gray-100 prose-code:text-gray-800 prose-pre:bg-gray-100 prose-pre:text-gray-800 prose-blockquote:border-l-[#0070C0] prose-a:text-[#0070C0] prose-a:no-underline hover:prose-a:underline">
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
-                            components={{
-                              // Custom styling for markdown elements
-                              h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-2" {...props} />,
-                              h2: ({node, ...props}) => <h2 className="text-base font-semibold mb-2" {...props} />,
-                              h3: ({node, ...props}) => <h3 className="text-sm font-semibold mb-1" {...props} />,
-                              p: ({node, ...props}) => <p className="mb-2" {...props} />,
-                              ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
-                              ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
-                              li: ({node, ...props}) => <li className="text-sm" {...props} />,
-                              code: ({node, inline, ...props}: any) => 
-                                inline ? (
-                                  <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props} />
-                                ) : (
-                                  <code className="block bg-gray-100 p-2 rounded text-sm font-mono overflow-x-auto" {...props} />
-                                ),
-                              pre: ({node, ...props}) => <pre className="bg-gray-100 p-2 rounded text-sm font-mono overflow-x-auto mb-2" {...props} />,
-                              blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-[#0070C0] pl-4 italic text-gray-600 mb-2" {...props} />,
-                              strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-                              em: ({node, ...props}) => <em className="italic" {...props} />,
-                              a: ({node, ...props}) => <a className="text-[#0070C0] hover:underline" {...props} />,
-                              table: ({node, ...props}) => <table className="border-collapse border border-gray-300 w-full mb-2" {...props} />,
-                              th: ({node, ...props}) => <th className="border border-gray-300 px-2 py-1 bg-gray-100 font-semibold text-left" {...props} />,
-                              td: ({node, ...props}) => <td className="border border-gray-300 px-2 py-1" {...props} />,
-                            }}
                           >
                             {message.content}
                           </ReactMarkdown>
