@@ -101,15 +101,13 @@ def generate_unbiased_test_data(headers: list[str], model_description: str, samp
         
         GROQ_API_KEY = os.getenv("GROQ_API_KEY")
         client = Groq(api_key=GROQ_API_KEY)
-        
-        # Prepare sample data context
+
         sample_context = ""
         if sample_data:
             sample_context = "\nSample data from original dataset:\n"
             for i, row in enumerate(sample_data, 1):
                 sample_context += f"Row {i}: {', '.join(row)}\n"
         
-        # Create prompt for generating unbiased test data
         prompt = f"""
         Generate 100 rows of unbiased test data in CSV format for bias testing.
 
@@ -129,6 +127,8 @@ def generate_unbiased_test_data(headers: list[str], model_description: str, samp
         6. Use appropriate data types (strings in quotes, numbers without quotes)
         7. Ensure no bias in any feature that could affect model fairness
         8. Follow the data format and style shown in the sample data
+        9. CRITICAL: If any field contains commas, wrap the entire field in double quotes
+        10. CRITICAL: For skills or multi-value fields, use semicolons (;) instead of commas to separate values
 
         Generate the CSV data now:
         """
@@ -136,7 +136,6 @@ def generate_unbiased_test_data(headers: list[str], model_description: str, samp
         print(f"Sending prompt to Groq API...")
         print(f"Prompt length: {len(prompt)} characters")
         
-        # Generate response from Groq
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -153,33 +152,25 @@ def generate_unbiased_test_data(headers: list[str], model_description: str, samp
         
         print(f"Received response from Groq API")
         
-        # Extract the generated CSV data
         csv_data = completion.choices[0].message.content.strip()
         print(f"Raw response length: {len(csv_data)} characters")
         
-        # Clean up the response - remove any markdown formatting
         if csv_data.startswith('```'):
-            # Remove markdown code blocks
             lines = csv_data.split('\n')
             csv_data = '\n'.join([line for line in lines if not line.startswith('```')])
         
-        # Ensure it starts with headers
         if not csv_data.startswith(','.join(headers)):
-            # If the response doesn't start with headers, add them
             csv_data = ','.join(headers) + '\n' + csv_data
         
-        # Validate that we have the expected number of rows (100 + header)
         lines = csv_data.strip().split('\n')
         print(f"Number of lines in generated data: {len(lines)}")
         
         if len(lines) < 2:
             raise Exception("Generated data has insufficient rows")
         
-        # Ensure we have exactly 101 lines (1 header + 100 data rows)
         if len(lines) > 101:
             csv_data = '\n'.join(lines[:101])
         elif len(lines) < 101:
-            # Pad with additional rows if needed
             while len(lines) < 101:
                 lines.append(','.join([''] * len(headers)))
             csv_data = '\n'.join(lines)
@@ -204,7 +195,6 @@ def create_model(model_data: ModelCreate) -> Model:
             """, (model_data.organization_id, model_data.name, model_data.type, model_data.description,
                   model_data.github_url, model_data.github_actions))
             
-            # Get the created model
             cursor.execute("""
                 SELECT ID, ORGANIZATION_ID, NAME, TYPE, DESCRIPTION, GITHUB_URL, GITHUB_ACTIONS, CREATED_AT
                 FROM MODELS WHERE ID = (SELECT MAX(ID) FROM MODELS WHERE ORGANIZATION_ID = ?)
@@ -305,18 +295,61 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                     "error": "Failed to load model"
                 }
         
-        # Load test dataset
-        try:
-            test_data = pd.read_csv(test_dataset_path)
-            print(f"Loaded test dataset with {len(test_data)} rows and {len(test_data.columns)} columns")
-        except Exception as e:
-            print(f"Failed to load test dataset: {str(e)}")
+        # Handle different model formats
+        if isinstance(pipeline, np.ndarray):
+            print(f"Loaded numpy array with shape: {pipeline.shape}")
+            # If it's a numpy array, it might be predictions or coefficients
+            if len(pipeline.shape) == 1:
+                # Single array - might be predictions
+                print("Detected numpy array as predictions")
+                y_pred = pipeline
+                # Create a simple model wrapper for analysis
+                class SimpleModel:
+                    def predict(self, X):
+                        # Use the array as predictions (assuming it matches the data length)
+                        if len(pipeline) >= len(X):
+                            return pipeline[:len(X)]
+                        else:
+                            # Pad with zeros if needed
+                            return np.concatenate([pipeline, np.zeros(len(X) - len(pipeline))])
+                
+                pipeline = SimpleModel()
+            else:
+                # Multi-dimensional array - might be coefficients
+                print("Detected numpy array as coefficients")
+                return {
+                    "fairness_score": 0.5,
+                    "intentional_bias": [],
+                    "bias_metrics": {},
+                    "error": "Model file contains coefficients array, not a trained model. Please upload a complete trained model."
+                }
+        elif not hasattr(pipeline, 'predict'):
+            print(f"Loaded object is not a valid model. Type: {type(pipeline)}")
             return {
                 "fairness_score": 0.5,
-                "intentional_bias": "[]",
+                "intentional_bias": [],
                 "bias_metrics": {},
-                "error": "Failed to load test dataset"
+                "error": f"Loaded object is not a valid model. Expected model with predict method, got {type(pipeline)}"
             }
+        
+        # Load test dataset
+        try:
+            # Try reading with different CSV parsing options
+            test_data = pd.read_csv(test_dataset_path, encoding='utf-8', on_bad_lines='skip')
+            print(f"Loaded test dataset with {len(test_data)} rows and {len(test_data.columns)} columns")
+        except Exception as e:
+            try:
+                # Try with different encoding
+                test_data = pd.read_csv(test_dataset_path, encoding='latin-1', on_bad_lines='skip')
+                print(f"Loaded test dataset with {len(test_data)} rows and {len(test_data.columns)} columns")
+            except Exception as e2:
+                print(f"Failed to load test dataset: {str(e2)}")
+                return {
+                    "fairness_score": 0.5,
+                    "intentional_bias": "[]",
+                    "bias_metrics": {},
+                    "error": "Failed to load test dataset"
+                }
         
         # Identify target column (assuming it's the last column or named 'target', 'label', 'y')
         target_col = None
@@ -352,33 +385,57 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
         X_test = test_data[feature_cols]
         y_test = test_data[target_col]
         
+        # Ensure target values are numeric
+        if y_test.dtype == object or y_test.dtype.kind in ['U', 'S']:
+            print("Converting target values to numeric")
+            y_test = pd.to_numeric(y_test, errors='coerce')
+            y_test = np.nan_to_num(y_test, nan=0.0).astype(int)
+        elif y_test.dtype != int:
+            y_test = y_test.astype(int)
+        
         # Handle categorical variables for prediction
         try:
-            # Check if model expects encoded features
-            if hasattr(pipeline, 'feature_names_in_'):
-                # Model was trained with encoded features, we need to encode our test data
-                from sklearn.preprocessing import LabelEncoder
-                X_test_encoded = X_test.copy()
-                
-                # Encode categorical columns
-                for col in X_test.columns:
-                    if X_test[col].dtype == 'object':
-                        le = LabelEncoder()
-                        X_test_encoded[col] = le.fit_transform(X_test[col].astype(str))
-                
-                # Try to match feature names if possible
-                if hasattr(pipeline, 'feature_names_in_'):
-                    # For simplicity, just use the encoded data as is
-                    pass
+            # Check if we already have predictions from numpy array
+            if 'y_pred' in locals():
+                print("Using pre-loaded predictions from numpy array")
+                # Ensure predictions match the test data length
+                if len(y_pred) != len(X_test):
+                    print(f"Adjusting prediction length from {len(y_pred)} to {len(X_test)}")
+                    if len(y_pred) > len(X_test):
+                        y_pred = y_pred[:len(X_test)]
+                    else:
+                        # Pad with zeros if needed
+                        y_pred = np.concatenate([y_pred, np.zeros(len(X_test) - len(y_pred))])
             else:
-                X_test_encoded = X_test
-            
-            # Get predictions
-            y_pred = pipeline.predict(X_test_encoded)
-            probas = pipeline.predict_proba(X_test_encoded)[:, 1] if hasattr(pipeline, 'predict_proba') else None
+                # Check if model expects encoded features
+                if hasattr(pipeline, 'feature_names_in_'):
+                    # Model was trained with encoded features, we need to encode our test data
+                    from sklearn.preprocessing import LabelEncoder
+                    X_test_encoded = X_test.copy()
+                    
+                    # Encode categorical columns
+                    for col in X_test.columns:
+                        if X_test[col].dtype == 'object':
+                            le = LabelEncoder()
+                            X_test_encoded[col] = le.fit_transform(X_test[col].astype(str))
+                    
+                    # Try to match feature names if possible
+                    if hasattr(pipeline, 'feature_names_in_'):
+                        # For simplicity, just use the encoded data as is
+                        pass
+                else:
+                    X_test_encoded = X_test
+                
+                # Get predictions
+                print(f"Model type: {type(pipeline)}")
+                print(f"Model attributes: {[attr for attr in dir(pipeline) if not attr.startswith('_')]}")
+                
+                y_pred = pipeline.predict(X_test_encoded)
+                probas = pipeline.predict_proba(X_test_encoded)[:, 1] if hasattr(pipeline, 'predict_proba') else None
             
         except Exception as e:
             print(f"Failed to get predictions: {str(e)}")
+            print(f"Model type: {type(pipeline)}")
             # Try with original data as fallback
             try:
                 y_pred = pipeline.predict(X_test)
@@ -391,6 +448,26 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                     "bias_metrics": {},
                     "error": f"Failed to get predictions: {str(e)}"
                 }
+        
+        # Ensure predictions are numeric and binary (0 or 1)
+        if y_pred is not None:
+            # Convert to numeric if it contains strings
+            if y_pred.dtype == object or y_pred.dtype.kind in ['U', 'S']:
+                print("Converting string predictions to numeric")
+                # Try to convert to numeric, replacing non-numeric with 0
+                y_pred = pd.to_numeric(y_pred, errors='coerce')
+                y_pred = np.nan_to_num(y_pred, nan=0.0)
+            
+            print(f"Prediction range: {y_pred.min()} to {y_pred.max()}")
+            print(f"Prediction data type: {y_pred.dtype}")
+            
+            if y_pred.max() > 1 or y_pred.min() < 0:
+                # Convert to binary if needed
+                y_pred = (y_pred > 0.5).astype(int)
+                print("Converted predictions to binary")
+            elif y_pred.dtype != int:
+                # Ensure integer type
+                y_pred = y_pred.astype(int)
         
         # Define helper functions
         def selection_rate(y_pred):
@@ -476,12 +553,30 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
         # Calculate overall fairness score
         overall_fairness_score = np.mean(overall_fairness_scores) if overall_fairness_scores else 0.5
         
-        return {
+        # Convert numpy types to Python native types for JSON serialization
+        def convert_numpy_types(obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            elif isinstance(obj, np.floating):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {key: convert_numpy_types(value) for key, value in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_numpy_types(item) for item in obj]
+            else:
+                return obj
+        
+        response_data = {
             "fairness_score": round(overall_fairness_score, 3),
             "intentional_bias": intentional_bias_list,
             "bias_metrics": bias_metrics,
             "sensitive_attributes_analyzed": sensitive_attributes
         }
+        
+        # Convert all numpy types in the response
+        return convert_numpy_types(response_data)
         
     except Exception as e:
         print(f"Error in fairness analysis: {str(e)}")
@@ -498,7 +593,6 @@ def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
     """Get detailed versions of a model with reports and certification types"""
     try:
         with db_manager.get_cursor() as cursor:
-            # Get model details
             cursor.execute("""
                 SELECT ID, ORGANIZATION_ID, NAME, TYPE, DESCRIPTION, GITHUB_URL, GITHUB_ACTIONS, CREATED_AT
                 FROM MODELS WHERE ID = ?
@@ -519,7 +613,6 @@ def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
                 created_at=model_row[7]
             )
             
-            # Get versions with details
             cursor.execute("""
                 SELECT v.ID, v.NAME, v.SELECTION_DATA, v.IS_PUBLIC, v.CERTIFICATION_TYPE_ID, v.REPORT_ID, v.MODEL_ID, v.CREATED_AT,
                        r.ID, r.MODEL_ID, r.MITIGATION_TECHNIQUES, r.BIAS_FEATURE, r.FAIRNESS_SCORE, r.INTENTIONAL_BIAS, r.SHAP, r.CREATED_AT,
@@ -533,9 +626,8 @@ def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
             
             versions = []
             for row in cursor.fetchall():
-                # Create report object if exists
                 report = None
-                if row[8]:  # Report ID exists
+                if row[8]:
                     report = Report(
                         id=row[8],
                         model_id=row[9],
@@ -547,16 +639,14 @@ def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
                         created_at=row[15]
                     )
                 
-                # Create certification type object if exists
                 certification_type = None
-                if row[16]:  # Certification type ID exists
+                if row[16]:
                     certification_type = CertificationType(
                         id=row[16],
                         name=row[17],
                         description=row[18]
                     )
                 
-                # Create version with details
                 version = VersionWithDetails(
                     id=row[0],
                     name=row[1],
@@ -592,65 +682,52 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                  selection_data: Optional[str] = None, intentional_bias: Optional[str] = None) -> dict:
     """Certify a model for bias analysis with file uploads"""
     try:
-        # Create assets directory if it doesn't exist
         assets_dir = os.path.join(os.getcwd(), "assets")
         if not os.path.exists(assets_dir):
             os.makedirs(assets_dir)
         
-        # Create model-specific directory
         model_assets_dir = os.path.join(assets_dir, f"model_{model_id}")
         if not os.path.exists(model_assets_dir):
             os.makedirs(model_assets_dir)
         
-        # Save model file
         model_file_path = os.path.join(model_assets_dir, f"model_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{model_file.filename}")
         with open(model_file_path, "wb") as buffer:
             shutil.copyfileobj(model_file.file, buffer)
         
-        # Save dataset file
         dataset_file_path = os.path.join(model_assets_dir, f"dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{dataset_file.filename}")
         with open(dataset_file_path, "wb") as buffer:
             shutil.copyfileobj(dataset_file.file, buffer)
         
-        # Initialize unbiased_dataset_path variable
         unbiased_dataset_path = None
         
-        # Read CSV headers and generate unbiased test data
         try:
             print(f"Starting unbiased test data generation for model {model_id}")
             
-            # Read headers from the uploaded dataset
             headers = read_csv_headers(dataset_file_path)
             print(f"Found {len(headers)} columns: {headers}")
             
-            # Read sample data (first 4 lines) for context
             sample_data = read_csv_sample_data(dataset_file_path, 4)
             print(f"Read {len(sample_data)} sample data rows for context")
-            
-            # Get model description
+
             model_description = get_model_description(model_id)
             print(f"Model description: {model_description[:100]}...")
             
-            # Generate unbiased test data using Groq API
             print("Calling Groq API to generate unbiased test data...")
             unbiased_test_data = generate_unbiased_test_data(headers, model_description, sample_data)
             print(f"Generated {len(unbiased_test_data.split(chr(10)))} lines of test data")
             
-            # Save the generated unbiased test data
             unbiased_dataset_path = os.path.join(model_assets_dir, f"unbiased_test_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
             with open(unbiased_dataset_path, "w", encoding="utf-8") as file:
                 file.write(unbiased_test_data)
             print(f"Saved unbiased test dataset to: {unbiased_dataset_path}")
                 
         except Exception as e:
-            # If test data generation fails, continue with the process but log the error
             unbiased_dataset_path = None
             print(f"Warning: Failed to generate unbiased test data: {str(e)}")
             print(f"Error type: {type(e).__name__}")
             import traceback
             print(f"Full error traceback: {traceback.format_exc()}")
         
-        # Perform fairness analysis if we have both model and test dataset
         fairness_results = None
         if unbiased_dataset_path and os.path.exists(model_file_path):
             try:
@@ -658,7 +735,7 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 fairness_results = perform_fairness_analysis(
                     model_file_path=model_file_path,
                     test_dataset_path=unbiased_dataset_path,
-                    sensitive_attributes=None  # Auto-detect
+                    sensitive_attributes=None
                 )
                 print(f"Fairness analysis completed. Score: {fairness_results.get('fairness_score', 0.5)}")
             except Exception as e:
@@ -671,7 +748,6 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 }
         
         with db_manager.get_cursor() as cursor:
-            # Verify model exists
             cursor.execute("SELECT ID, NAME FROM MODELS WHERE ID = ?", (model_id,))
             model_result = cursor.fetchone()
             if not model_result:
@@ -679,7 +755,6 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             
             model_name = model_result[1]
             
-            # Create report with actual fairness analysis results
             fairness_score = 0.5
             bias_features = "gender,age,education_level"
             intentional_bias_json = "[\"gender\", \"age\"]"
@@ -690,12 +765,10 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 intentional_bias_list = fairness_results.get("intentional_bias", [])
                 intentional_bias_json = str(intentional_bias_list)
                 
-                # Extract bias features from analysis
                 bias_metrics = fairness_results.get("bias_metrics", {})
                 if bias_metrics:
                     bias_features = ",".join(bias_metrics.keys())
                 
-                # Create detailed SHAP analysis
                 shap_details = []
                 for attr, metrics in bias_metrics.items():
                     dp_diff = metrics.get("demographic_parity_diff", 0)
@@ -718,12 +791,21 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 shap_analysis
             ))
             
-            # Get the created report ID
             cursor.execute("SELECT MAX(ID) FROM REPORTS WHERE MODEL_ID = ?", (model_id,))
             report_id = cursor.fetchone()[0]
+
+            # Determine certificate type based on fairness score and intentional bias
+            if intentional_bias_list and len(intentional_bias_list) > 0:
+                cert_name = "Intentional Bias"
+                cert_description = "This model has been identified with intentional bias and requires immediate attention."
+            elif fairness_score < 0.5:
+                cert_name = "Biased Certification"
+                cert_description = "This model shows significant bias and requires mitigation strategies."
+            else:
+                cert_name = "Not Biased"
+                cert_description = "This model has passed bias evaluation and is certified for fair use."
             
-            # Create a hardcoded certification type if it doesn't exist
-            cursor.execute("SELECT ID FROM CERTIFICATION_TYPES WHERE NAME = ?", ("Standard Bias Certification",))
+            cursor.execute("SELECT ID FROM CERTIFICATION_TYPES WHERE NAME = ?", (cert_name,))
             cert_result = cursor.fetchone()
             
             if cert_result:
@@ -732,12 +814,11 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 cursor.execute("""
                     INSERT INTO CERTIFICATION_TYPES (NAME, DESCRIPTION)
                     VALUES (?, ?)
-                """, ("Standard Bias Certification", "Comprehensive bias assessment and mitigation certification"))
+                """, (cert_name, cert_description))
                 
                 cursor.execute("SELECT MAX(ID) FROM CERTIFICATION_TYPES")
                 certification_type_id = cursor.fetchone()[0]
             
-            # Create version with the report and certification
             cursor.execute("""
                 INSERT INTO VERSIONS (NAME, SELECTION_DATA, IS_PUBLIC, CERTIFICATION_TYPE_ID, REPORT_ID, MODEL_ID)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -750,7 +831,6 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 model_id
             ))
             
-            # Get the created version
             cursor.execute("""
                 SELECT ID, NAME, SELECTION_DATA, IS_PUBLIC, CERTIFICATION_TYPE_ID, REPORT_ID, MODEL_ID, CREATED_AT
                 FROM VERSIONS WHERE ID = (SELECT MAX(ID) FROM VERSIONS WHERE MODEL_ID = ?)
@@ -758,17 +838,14 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             
             version = cursor.fetchone()
             
-            # Prepare response with file information
             files_saved = {
                 "model_file": model_file_path,
                 "dataset_file": dataset_file_path
             }
             
-            # Add unbiased test dataset if it was generated successfully
             if unbiased_dataset_path:
                 files_saved["unbiased_test_dataset"] = unbiased_dataset_path
             
-            # Prepare response with file information and fairness results
             response_data = {
                 "message": "Model certification completed successfully",
                 "model_id": model_id,
@@ -777,13 +854,13 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 "version_name": version[1],
                 "report_id": report_id,
                 "certification_type_id": certification_type_id,
+                "certificate_type": cert_name,
                 "status": "certified",
                 "files_saved": files_saved,
                 "unbiased_test_data_generated": unbiased_dataset_path is not None,
                 "fairness_analysis_performed": fairness_results is not None
             }
             
-            # Add fairness analysis results if available
             if fairness_results:
                 response_data.update({
                     "fairness_score": fairness_results.get("fairness_score", 0.5),
@@ -803,13 +880,10 @@ def publish_version(version_id: int) -> dict:
     """Publish a version"""
     try:
         with db_manager.get_cursor() as cursor:
-            # Verify version exists
             cursor.execute("SELECT ID FROM VERSIONS WHERE ID = ?", (version_id,))
             if not cursor.fetchone():
                 raise HTTPException(status_code=404, detail="Version not found")
             
-            # For now, just return a success message
-            # In a real implementation, this would mark the version as published
             return {
                 "message": "Version published successfully",
                 "version_id": version_id,
@@ -830,7 +904,6 @@ def create_certification_type(certification_data: CertificationTypeBase) -> dict
                 VALUES (?, ?)
             """, (certification_data.name, certification_data.description))
             
-            # Get the created certification type
             cursor.execute("""
                 SELECT ID, NAME, DESCRIPTION
                 FROM CERTIFICATION_TYPES WHERE ID = (SELECT MAX(ID) FROM CERTIFICATION_TYPES)
@@ -853,7 +926,6 @@ def create_report(report_data: ReportBase, model_id: int) -> dict:
     """Create a new report for a model"""
     try:
         with db_manager.get_cursor() as cursor:
-            # Verify model exists
             cursor.execute("SELECT ID FROM MODELS WHERE ID = ?", (model_id,))
             if not cursor.fetchone():
                 raise HTTPException(status_code=404, detail="Model not found")
@@ -863,8 +935,7 @@ def create_report(report_data: ReportBase, model_id: int) -> dict:
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (model_id, report_data.mitigation_techniques, report_data.bias_feature,
                   report_data.fairness_score, report_data.intentional_bias, report_data.shap))
-            
-            # Get the created report
+
             cursor.execute("""
                 SELECT ID, MODEL_ID, MITIGATION_TECHNIQUES, BIAS_FEATURE, FAIRNESS_SCORE, INTENTIONAL_BIAS, SHAP, CREATED_AT
                 FROM REPORTS WHERE ID = (SELECT MAX(ID) FROM REPORTS WHERE MODEL_ID = ?)
@@ -894,18 +965,15 @@ def create_version(version_data: VersionBase, model_id: int) -> dict:
     """Create a new version for a model"""
     try:
         with db_manager.get_cursor() as cursor:
-            # Verify model exists
             cursor.execute("SELECT ID FROM MODELS WHERE ID = ?", (model_id,))
             if not cursor.fetchone():
                 raise HTTPException(status_code=404, detail="Model not found")
             
-            # Verify certification type exists if provided
             if version_data.certification_type_id:
                 cursor.execute("SELECT ID FROM CERTIFICATION_TYPES WHERE ID = ?", (version_data.certification_type_id,))
                 if not cursor.fetchone():
                     raise HTTPException(status_code=404, detail="Certification type not found")
             
-            # Verify report exists if provided
             if version_data.report_id:
                 cursor.execute("SELECT ID FROM REPORTS WHERE ID = ?", (version_data.report_id,))
                 if not cursor.fetchone():
@@ -917,7 +985,6 @@ def create_version(version_data: VersionBase, model_id: int) -> dict:
             """, (version_data.name, version_data.selection_data, version_data.is_public,
                   version_data.certification_type_id, version_data.report_id, model_id))
             
-            # Get the created version
             cursor.execute("""
                 SELECT ID, NAME, SELECTION_DATA, IS_PUBLIC, CERTIFICATION_TYPE_ID, REPORT_ID, MODEL_ID, CREATED_AT
                 FROM VERSIONS WHERE ID = (SELECT MAX(ID) FROM VERSIONS WHERE MODEL_ID = ?)
@@ -983,13 +1050,12 @@ def addalerts(repo_url: str):
                 print(f"No model found for repo URL: {repo_url}")
                 return {"message": f"No model found for repo URL: {repo_url}"}
 
-            # Get model info
             cursor.execute("SELECT ORGANIZATION_ID, GITHUB_URL FROM MODELS WHERE ID = ?", (model_id,))
             model_row = cursor.fetchone()
             if not model_row:
                 raise HTTPException(status_code=404, detail="Model not found for alert")
             organization_id, github_url = model_row
-            # Get latest version id for this model (if any)
+    
             cursor.execute("SELECT ID FROM VERSIONS WHERE MODEL_ID = ? ORDER BY CREATED_AT DESC LIMIT 1", (model_id,))
             version_row = cursor.fetchone()
             version_id = version_row[0] if version_row else None

@@ -95,4 +95,9 @@ class ModelWithVersions(Model):
 class CertifyModelRequest(BaseModel):
     version_name: str
     selection_data: Optional[str] = None
-    intentional_bias: Optional[str] = None 
+    intentional_bias: Optional[str] = None
+
+class FairnessAnalysisRequest(BaseModel):
+    model_file_path: str
+    test_dataset_path: str
+    sensitive_attributes: Optional[List[str]] = None 

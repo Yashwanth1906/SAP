@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form
-from controllers.model_controller import create_model, get_models_by_organization, get_model_versions_with_details, certify_model, publish_version, create_certification_type, create_report, create_version,addalerts
-from utils.models import ModelCreate, Model, ModelWithVersions, CertificationTypeBase, ReportBase, VersionBase
+from controllers.model_controller import create_model, get_models_by_organization, get_model_versions_with_details, certify_model, publish_version, create_certification_type, create_report, create_version, addalerts, perform_fairness_analysis
+from utils.models import ModelCreate, Model, ModelWithVersions, CertificationTypeBase, ReportBase, VersionBase, FairnessAnalysisRequest
 from typing import List, Optional
 
 import os
@@ -37,6 +37,15 @@ def certify_model_endpoint(
 ):
     """Certify a model for bias analysis with file uploads"""
     return certify_model(model_id, model_file, dataset_file, version_name, selection_data, intentional_bias)
+
+@router.post("/fairness-analysis")
+def perform_fairness_analysis_endpoint(request: FairnessAnalysisRequest):
+    """Perform fairness analysis on a model using file paths"""
+    return perform_fairness_analysis(
+        model_file_path=request.model_file_path,
+        test_dataset_path=request.test_dataset_path,
+        sensitive_attributes=request.sensitive_attributes
+    )
 
 @router.post("/versions/{version_id}/publish")
 def publish_version_endpoint(version_id: int):

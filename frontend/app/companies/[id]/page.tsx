@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiService } from "@/lib/api";
+import CertificateTemplate from "@/components/CertificateTemplate";
+import { downloadCertificate } from "@/lib/certificateUtils";
 
 type Model = {
   id: string;
@@ -264,23 +266,26 @@ export default function CompanyModelsPage() {
                      )}
 
                     <div className="mb-4">
-                      <h4 className="text-sm font-medium text-gray-900 mb-2">Certification Certificate</h4>
-                      <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-                        {model.certificateUrl ? (
-                          <img 
-                            src={model.certificateUrl} 
-                            alt={`Certificate for ${model.name}`}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        ) : (
-                          <div className="text-center">
-                            <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <p className="text-gray-500 text-sm">Certificate Image</p>
-                          </div>
-                        )}
-                      </div>
+                      <CertificateTemplate
+                        organizationName={company?.name || 'Unknown Organization'}
+                        modelName={model.name}
+                        versionName={model.version?.name || 'Unknown Version'}
+                        modelDescription={model.description}
+                        fairnessScore={model.report?.fairnessScore}
+                        intentionalBias={model.report?.intentionalBias}
+                        certificationDate={model.certificationDate}
+                        certificateType={model.certificationType?.name}
+                        modelId={model.id}
+                        onDownload={() => {
+                          const certificateElement = document.querySelector(`[data-certificate-${model.id}]`) as HTMLDivElement;
+                          if (certificateElement) {
+                            downloadCertificate(
+                              { current: certificateElement } as React.RefObject<HTMLDivElement>,
+                              `${model.name}_${model.version?.name || 'certificate'}`
+                            );
+                          }
+                        }}
+                      />
                     </div>
                         
                     <div className="text-xs text-gray-500">
