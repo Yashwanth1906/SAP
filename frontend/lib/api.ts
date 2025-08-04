@@ -136,6 +136,123 @@ export const apiService = {
     return response.data;
   },
 
+  // Streaming chat message
+  sendChatMessageStream: async (data: {
+    message: string;
+    model_id?: number;
+    github_url?: string;
+    session_id?: string;
+  }, onChunk: (chunk: string) => void) => {
+    const response = await fetch(`${BACKEND_URL}/chat/send-stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        "ngrok-skip-browser-warning": "69420"
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              return;
+            }
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.chunk) {
+                onChunk(parsed.chunk);
+              }
+            } catch (e) {
+              console.warn('Failed to parse chunk:', data);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
+
+  // Streaming model analysis
+  analyzeModelCodeStream: async (data: {
+    model_id: number;
+    user_query: string;
+    session_id?: string;
+  }, onChunk: (chunk: string) => void) => {
+    const response = await fetch(`${BACKEND_URL}/chat/analyze-model-stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        "ngrok-skip-browser-warning": "69420"
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              return;
+            }
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.chunk) {
+                onChunk(parsed.chunk);
+              }
+            } catch (e) {
+              console.warn('Failed to parse chunk:', data);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
+
   analyzeModelCode: async (data: {
     model_id: number;
     user_query: string;

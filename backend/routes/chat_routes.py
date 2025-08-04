@@ -4,6 +4,9 @@ from typing import Optional, List, Dict
 import google.generativeai as genai
 import os
 from github_fetcher import GitHubFetcher
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -222,11 +225,180 @@ async def clear_session_context(session_id: str):
 
 @router.get("/session/{session_id}/context")
 async def get_session_context_endpoint(session_id: str):
-    """Get current session context"""
+    """Get session context"""
     context = get_session_context(session_id)
     return {
-        "has_github_code": bool(context.get('github_code')),
+        "has_github_code": context.get('github_code') is not None,
         "files_fetched": context.get('files_fetched', []),
-        "model_info": context.get('model_info'),
-        "conversation_length": len(context.get('conversation_history', []))
-    } 
+        "model_info": context.get('model_info')
+    }
+
+# Streaming endpoints
+@router.post("/send-stream")
+async def send_message_stream(chat_data: ChatMessage):
+    """Send a message to the AI assistant with streaming response"""
+    async def generate_stream():
+        try:
+            session_id = chat_data.session_id or "default"
+            context = get_session_context(session_id)
+            
+            # If github_url is provided, fetch and analyze code
+            github_code_content = context.get('github_code', "")
+            files_fetched = context.get('files_fetched', [])
+            
+            if chat_data.github_url and not github_code_content:
+                fetcher = GitHubFetcher()
+                files_content = fetcher.fetch_repository_files(chat_data.github_url)
+                
+                if files_content:
+                    github_code_content = fetcher.format_for_llm(files_content)
+                    files_fetched = list(files_content.keys())
+                    update_session_context(session_id, github_code_content, files_fetched)
+            
+            # Prepare the prompt for the LLM
+            if github_code_content:
+                prompt = f"""
+You are an AI assistant helping with code analysis and security assessment. 
+
+GitHub Repository Code (from previous session):
+{github_code_content}
+
+User Query: {chat_data.message}
+
+Please analyze the code and provide a comprehensive response addressing the user's query. Focus on:
+1. Code quality and best practices
+2. Security vulnerabilities
+3. Performance considerations
+4. Specific recommendations based on the user's question
+
+Provide detailed, actionable advice.
+"""
+            else:
+                prompt = f"""
+You are an AI assistant helping with general questions about AI models, security, and best practices.
+
+User Query: {chat_data.message}
+
+Please provide a helpful and informative response.
+"""
+            
+            # Generate streaming response
+            response = model.generate_content(prompt, stream=True)
+            
+            for chunk in response:
+                if chunk.text:
+                    yield f"data: {json.dumps({'chunk': chunk.text})}\n\n"
+                    await asyncio.sleep(0.01)  # Small delay for smooth streaming
+            
+            yield "data: [DONE]\n\n"
+            
+        except Exception as e:
+            error_message = f"Error: {str(e)}"
+            yield f"data: {json.dumps({'chunk': error_message})}\n\n"
+            yield "data: [DONE]\n\n"
+    
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+        }
+    )
+
+@router.post("/analyze-model-stream")
+async def analyze_model_code_stream(request: GitHubCodeRequest):
+    """Analyze model code with streaming response"""
+    async def generate_stream():
+        try:
+            session_id = request.session_id or "default"
+            context = get_session_context(session_id)
+            
+            # Get model information from database
+            from db.connection import db_manager
+            with db_manager.get_cursor() as cursor:
+                cursor.execute("SELECT * FROM MODELS WHERE ID = ?", (request.model_id,))
+                model_info = cursor.fetchone()
+            
+            if not model_info:
+                yield f"data: {json.dumps({'chunk': 'Model not found.'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+            
+            # Get GitHub URL from model
+            github_url = model_info[5]  # Assuming github_url is at index 5
+            if not github_url:
+                yield f"data: {json.dumps({'chunk': 'No GitHub URL associated with this model.'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+            
+            # Fetch GitHub code
+            fetcher = GitHubFetcher()
+            files_content = fetcher.fetch_repository_files(github_url)
+            
+            if not files_content:
+                yield f"data: {json.dumps({'chunk': 'Could not fetch repository files.'})}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+            
+            # Format code for LLM
+            github_code_content = fetcher.format_for_llm(files_content)
+            files_fetched = list(files_content.keys())
+            update_session_context(session_id, github_code_content, files_fetched, {
+                'id': model_info[0],
+                'name': model_info[2],
+                'type': model_info[3],
+                'description': model_info[4]
+            })
+            
+            # Prepare prompt
+            prompt = f"""
+You are an AI assistant analyzing a machine learning model's code repository.
+
+Model Information:
+- Name: {model_info[2]}
+- Type: {model_info[3]}
+- Description: {model_info[4] or 'No description available'}
+
+GitHub Repository: {github_url}
+
+Repository Code:
+{github_code_content}
+
+User Query: {request.user_query}
+
+Please analyze the code and provide insights about:
+1. Code structure and organization
+2. Potential bias patterns or fairness issues
+3. Security considerations
+4. Performance optimizations
+5. Specific recommendations based on the user's question
+
+Provide detailed, actionable advice with code examples when relevant.
+"""
+            
+            # Generate streaming response
+            response = model.generate_content(prompt, stream=True)
+            
+            for chunk in response:
+                if chunk.text:
+                    yield f"data: {json.dumps({'chunk': chunk.text})}\n\n"
+                    await asyncio.sleep(0.01)  # Small delay for smooth streaming
+            
+            yield "data: [DONE]\n\n"
+            
+        except Exception as e:
+            error_message = f"Error: {str(e)}"
+            yield f"data: {json.dumps({'chunk': error_message})}\n\n"
+            yield "data: [DONE]\n\n"
+    
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+        }
+    ) 

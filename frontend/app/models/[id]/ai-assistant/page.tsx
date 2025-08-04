@@ -74,6 +74,16 @@ export default function AIAssistantPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Add a separate effect for smooth scrolling during streaming
+  useEffect(() => {
+    if (isTyping) {
+      const interval = setInterval(() => {
+        scrollToBottom();
+      }, 100); // Scroll every 100ms during typing
+      return () => clearInterval(interval);
+    }
+  }, [isTyping]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -157,6 +167,17 @@ ${modelData.github_url || 'Not connected'}
     setInputMessage("");
     setIsTyping(true);
 
+    // Create a placeholder message for the assistant response
+    const assistantMessageId = (Date.now() + 1).toString();
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      type: 'assistant',
+      content: '',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, assistantMessage]);
+
     try {
       // Check if the message is about GitHub or code analysis
       const messageLower = inputMessage.toLowerCase();
@@ -164,43 +185,48 @@ ${modelData.github_url || 'Not connected'}
       
       if (messageLower.includes('github') || messageLower.includes('repo') || messageLower.includes('connect') || 
           messageLower.includes('pull') || messageLower.includes('fetch') || messageLower.includes('code')) {
-        // Use the analyze-model endpoint for GitHub-related queries
-        response = await apiService.analyzeModelCode({
+        // Use the streaming analyze-model endpoint for GitHub-related queries
+        await apiService.analyzeModelCodeStream({
           model_id: parseInt(modelId),
           user_query: inputMessage,
           session_id: sessionId
+        }, (chunk: string) => {
+          // Update the assistant message with the streaming content
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { ...msg, content: msg.content + chunk }
+              : msg
+          ));
         });
       } else {
-        // Use the general chat endpoint
-        response = await apiService.sendChatMessage({
+        // Use the streaming chat endpoint
+        await apiService.sendChatMessageStream({
           message: inputMessage,
           model_id: parseInt(modelId),
           session_id: sessionId
+        }, (chunk: string) => {
+          // Update the assistant message with the streaming content
+          setMessages(prev => prev.map(msg => 
+            msg.id === assistantMessageId 
+              ? { ...msg, content: msg.content + chunk }
+              : msg
+          ));
         });
       }
-
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: response.response,
-        timestamp: new Date()
-      };
       
-      setMessages(prev => [...prev, aiResponse]);
-      
-      // Check if GitHub context was added
-      if (response.github_code_analyzed && !hasGitHubContext) {
+      // Check if GitHub context was added (this would need to be handled differently with streaming)
+      // For now, we'll keep the existing logic but it might need adjustment
+      if (messageLower.includes('github') || messageLower.includes('repo') || messageLower.includes('connect')) {
         setHasGitHubContext(true);
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'assistant',
-        content: `Sorry, I encountered an error: ${error.response?.data?.detail || 'Please try again later.'}`,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      // Update the assistant message with error content
+      setMessages(prev => prev.map(msg => 
+        msg.id === assistantMessageId 
+          ? { ...msg, content: `Sorry, I encountered an error: ${error.response?.data?.detail || 'Please try again later.'}` }
+          : msg
+      ));
     } finally {
       setIsTyping(false);
     }
@@ -359,6 +385,10 @@ ${modelData.github_url || 'Not connected'}
                           >
                             {message.content}
                           </ReactMarkdown>
+                          {/* Typing cursor for streaming messages */}
+                          {isTyping && message.id === messages[messages.length - 1]?.id && (
+                            <span className="inline-block w-2 h-4 bg-[#0070C0] animate-pulse ml-1"></span>
+                          )}
                         </div>
                       ) : (
                         <div className="whitespace-pre-wrap">{message.content}</div>
@@ -383,11 +413,11 @@ ${modelData.github_url || 'Not connected'}
                   <div className="bg-white text-gray-900 rounded-lg px-4 py-3 border border-gray-200">
                     <div className="flex items-center space-x-2">
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-[#0070C0] rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-[#0070C0] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-[#0070C0] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <span className="text-sm text-gray-500">AI is typing...</span>
+                      <span className="text-sm text-gray-500">AI is thinking...</span>
                     </div>
                   </div>
                 </motion.div>
