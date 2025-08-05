@@ -150,9 +150,8 @@ export default function CreateVersionPage() {
     try {
       setIsLoading(true);
       setError("");
-      setSuccess("Certifying for 1 minute...");
+      setSuccess("Certifying...");
 
-      // Validate required files
       if (!modelFile) {
         setError("Please upload a model file");
         return;
