@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { auth } from "@/lib/auth";
 import { apiService } from "@/lib/api";
 import AuthGuard from "@/components/AuthGuard";
+import CertificateTemplate from "@/components/CertificateTemplate";
+import { downloadCertificate } from "@/lib/certificateUtils";
 
 interface Model {
   id: number;
@@ -374,7 +376,7 @@ export default function VersionDetailsPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Certification Details</h2>
               {version.certification_type ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
                       <h3 className="font-medium text-gray-900 mb-3">Certification Information</h3>
@@ -386,7 +388,7 @@ export default function VersionDetailsPage() {
                         <div>
                           <span className="text-sm font-medium text-gray-700">Fairness Score:</span>
                           <span className="ml-2 text-gray-900">
-                            {version.certification_type.fairness_score ? `${(version.certification_type.fairness_score * 100).toFixed(1)}%` : 'N/A'}
+                            {version.report?.fairness_score ? `${(version.report.fairness_score * 100).toFixed(1)}%` : 'N/A'}
                           </span>
                         </div>
                       </div>
@@ -397,6 +399,30 @@ export default function VersionDetailsPage() {
                         {version.certification_type.description || 'No description available'}
                       </p>
                     </div>
+                  </div>
+                  
+                  {/* Certificate Template */}
+                  <div className="mt-6">
+                    <CertificateTemplate
+                      organizationName={currentUser?.name || 'Unknown Organization'}
+                      modelName={model.name}
+                      versionName={version.name}
+                      modelDescription={model.description || undefined}
+                      fairnessScore={version.report?.fairness_score}
+                      intentionalBias={version.report?.intentional_bias || undefined}
+                      certificationDate={version.created_at}
+                      certificateType={version.certification_type?.name}
+                      modelId={version.id.toString()}
+                      onDownload={() => {
+                        const certificateElement = document.querySelector(`[data-certificate-${version.id}]`) as HTMLDivElement;
+                        if (certificateElement) {
+                          downloadCertificate(
+                            { current: certificateElement } as React.RefObject<HTMLDivElement>,
+                            `${model.name}_${version.name}_certificate`
+                          );
+                        }
+                      }}
+                    />
                   </div>
                 </div>
               ) : (

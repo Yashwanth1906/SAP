@@ -124,18 +124,22 @@ export default function CertificateTemplate({
          className="bg-white border-2 border-gray-200 rounded-lg shadow-lg overflow-hidden"
          style={{ aspectRatio: '1.414' }} // A4 aspect ratio
        >
-        {/* Certificate Header */}
-        <div className="bg-gradient-to-r from-[#0070C0] to-[#005A9E] text-white p-8 text-center">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mr-4">
-              <span className="text-[#0070C0] font-bold text-2xl">SAP</span>
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">BiasCertify</h1>
-              <p className="text-lg opacity-90">AI Model Certification</p>
-            </div>
-          </div>
-        </div>
+                 {/* Certificate Header */}
+         <div className="bg-gradient-to-r from-[#0070C0] to-[#005A9E] text-white p-8 text-center">
+           <div className="flex items-center justify-center mb-4">
+             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mr-4 p-2">
+               <img 
+                 src="/sap-logo.png" 
+                 alt="SAP Logo" 
+                 className="w-full h-full object-contain"
+               />
+             </div>
+             <div>
+               <h1 className="text-3xl font-bold">BiasCertify</h1>
+               <p className="text-lg opacity-90">AI Model Certification</p>
+             </div>
+           </div>
+         </div>
 
         {/* Certificate Body */}
         <div className="p-8">

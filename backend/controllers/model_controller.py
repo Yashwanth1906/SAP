@@ -13,6 +13,21 @@ from utils.models import ModelCreate, Model, ModelWithVersions, CertificationTyp
 from groq import Groq
 from sklearn.metrics import confusion_matrix
 
+def convert_numpy_types(obj):
+    """Convert numpy types to native Python types for JSON serialization"""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: convert_numpy_types(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    else:
+        return obj
+
 
 def read_csv_headers(file_path: str) -> list[str]:
     """Read the header row from a CSV file"""
@@ -38,7 +53,7 @@ def read_csv_headers(file_path: str) -> list[str]:
             return list(df.columns)
         except Exception:
             pass
-            
+        
         raise Exception("Could not read CSV headers with any encoding")
         
     except Exception as e:
@@ -553,21 +568,6 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
         # Calculate overall fairness score
         overall_fairness_score = np.mean(overall_fairness_scores) if overall_fairness_scores else 0.5
         
-        # Convert numpy types to Python native types for JSON serialization
-        def convert_numpy_types(obj):
-            if isinstance(obj, np.integer):
-                return int(obj)
-            elif isinstance(obj, np.floating):
-                return float(obj)
-            elif isinstance(obj, np.ndarray):
-                return obj.tolist()
-            elif isinstance(obj, dict):
-                return {key: convert_numpy_types(value) for key, value in obj.items()}
-            elif isinstance(obj, list):
-                return [convert_numpy_types(item) for item in obj]
-            else:
-                return obj
-        
         response_data = {
             "fairness_score": round(overall_fairness_score, 3),
             "intentional_bias": intentional_bias_list,
@@ -792,7 +792,7 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             ))
             
             cursor.execute("SELECT MAX(ID) FROM REPORTS WHERE MODEL_ID = ?", (model_id,))
-            report_id = cursor.fetchone()[0]
+            report_id = int(cursor.fetchone()[0])
 
             # Determine certificate type based on fairness score and intentional bias
             if intentional_bias_list and len(intentional_bias_list) > 0:
@@ -817,7 +817,7 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 """, (cert_name, cert_description))
                 
                 cursor.execute("SELECT MAX(ID) FROM CERTIFICATION_TYPES")
-                certification_type_id = cursor.fetchone()[0]
+                certification_type_id = int(cursor.fetchone()[0])
             
             cursor.execute("""
                 INSERT INTO VERSIONS (NAME, SELECTION_DATA, IS_PUBLIC, CERTIFICATION_TYPE_ID, REPORT_ID, MODEL_ID)
@@ -837,6 +837,17 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             """, (model_id,))
             
             version = cursor.fetchone()
+            if version:
+                version = (
+                    int(version[0]),  # ID
+                    version[1],       # NAME
+                    version[2],       # SELECTION_DATA
+                    bool(version[3]), # IS_PUBLIC
+                    int(version[4]) if version[4] else None,  # CERTIFICATION_TYPE_ID
+                    int(version[5]) if version[5] else None,  # REPORT_ID
+                    int(version[6]),  # MODEL_ID
+                    version[7]        # CREATED_AT
+                )
             
             files_saved = {
                 "model_file": model_file_path,
@@ -863,13 +874,13 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             
             if fairness_results:
                 response_data.update({
-                    "fairness_score": fairness_results.get("fairness_score", 0.5),
-                    "intentional_bias": fairness_results.get("intentional_bias", []),
-                    "bias_metrics": fairness_results.get("bias_metrics", {}),
-                    "sensitive_attributes_analyzed": fairness_results.get("sensitive_attributes_analyzed", [])
+                    "fairness_score": convert_numpy_types(fairness_results.get("fairness_score", 0.5)),
+                    "intentional_bias": convert_numpy_types(fairness_results.get("intentional_bias", [])),
+                    "bias_metrics": convert_numpy_types(fairness_results.get("bias_metrics", {})),
+                    "sensitive_attributes_analyzed": convert_numpy_types(fairness_results.get("sensitive_attributes_analyzed", []))
                 })
             
-            return response_data
+            return convert_numpy_types(response_data)
             
     except HTTPException:
         raise
