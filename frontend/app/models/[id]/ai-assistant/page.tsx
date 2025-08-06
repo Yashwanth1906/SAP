@@ -8,6 +8,8 @@ import { apiService } from "@/lib/api";
 import AuthGuard from "@/components/AuthGuard";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface Model {
   id: number;
@@ -40,10 +42,236 @@ interface Message {
   timestamp: Date;
 }
 
+
+const CodeBlock = ({ children, className, ...props }: any) => {
+  const match = /language-(\w+)/.exec(className || '');
+  const language = match ? match[1] : '';
+  const code = String(children).replace(/\n$/, '');
+
+  return (
+    <div className="my-4 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+      <div className="bg-gray-800 text-gray-200 px-4 py-2 text-sm font-medium flex items-center justify-between">
+        <span>{language || 'code'}</span>
+        <button
+          onClick={() => navigator.clipboard.writeText(code)}
+          className="text-gray-400 hover:text-white transition-colors"
+          title="Copy code"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+        </button>
+      </div>
+      <div className="overflow-x-auto max-w-full">
+        <SyntaxHighlighter
+          style={tomorrow}
+          language={language}
+          PreTag="div"
+          customStyle={{
+            margin: 0,
+            borderRadius: 0,
+            fontSize: '14px',
+            lineHeight: '1.5',
+            padding: '16px',
+            backgroundColor: '#2d3748',
+            minWidth: '100%',
+            maxWidth: '100%',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word'
+          }}
+          {...props}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
+    </div>
+  );
+};
+
+const InlineCode = ({ children }: any) => (
+  <code className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-mono">
+    {children}
+  </code>
+);
+
+const FileNameCode = ({ children }: any) => (
+  <span className="font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded text-sm border border-gray-300">
+    {children}
+  </span>
+);
+
+const CustomMarkdown = ({ content }: { content: string }) => {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        code: ({ node, inline, className, children, ...props }: any) => {
+          if (inline) {
+            const codeText = String(children);
+            const lines = codeText.split('\n').filter(line => line.trim().length > 0);
+            
+            const isFilePath = /^[a-zA-Z0-9\/\\_.-]+$/.test(codeText.trim()) && 
+                              (codeText.includes('.') || codeText.includes('/') || codeText.includes('\\'));
+            
+            if (lines.length === 1 && (codeText.length < 50 || isFilePath)) {
+              return <FileNameCode {...props}>{children}</FileNameCode>;
+            } else {
+              return <InlineCode {...props}>{children}</InlineCode>;
+            }
+          }
+          
+          const codeText = String(children);
+          const lines = codeText.split('\n').filter(line => line.trim().length > 0);
+          
+          const isFileList = lines.every(line => 
+            /^[a-zA-Z0-9\/\\_.-]+$/.test(line.trim()) && 
+            (line.includes('.') || line.includes('/') || line.includes('\\'))
+          );
+          
+          if (lines.length <= 2 && (isFileList || lines.every(line => line.length < 50))) {
+            return (
+              <span className="inline-flex flex-wrap gap-1">
+                {lines.map((line, index) => (
+                  <FileNameCode key={index}>{line}</FileNameCode>
+                ))}
+              </span>
+            );
+          } else {
+            return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+          }
+        },
+        h1: ({ children }) => (
+          <h1 className="text-2xl font-bold text-gray-900 mb-4 mt-6 first:mt-0">
+            {children}
+          </h1>
+        ),
+        h2: ({ children }) => (
+          <h2 className="text-xl font-semibold text-gray-900 mb-3 mt-5">
+            {children}
+          </h2>
+        ),
+        h3: ({ children }) => (
+          <h3 className="text-lg font-medium text-gray-900 mb-2 mt-4">
+            {children}
+          </h3>
+        ),
+        p: ({ children }) => (
+          <p className="text-gray-700 mb-3 leading-relaxed">
+            {children}
+          </p>
+        ),
+        ul: ({ children }) => (
+          <ul className="list-disc list-inside text-gray-700 mb-3 space-y-1">
+            {children}
+          </ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="list-decimal list-inside text-gray-700 mb-3 space-y-1">
+            {children}
+          </ol>
+        ),
+        li: ({ children }) => (
+          <li className="text-gray-700">
+            {children}
+          </li>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-4 border-[#0070C0] pl-4 py-2 my-4 bg-blue-50 text-gray-700 italic">
+            {children}
+          </blockquote>
+        ),
+        a: ({ href, children }) => (
+          <a 
+            href={href} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-[#0070C0] hover:underline font-medium"
+          >
+            {children}
+          </a>
+        ),
+        strong: ({ children }) => (
+          <strong className="font-semibold text-gray-900">
+            {children}
+          </strong>
+        ),
+        em: ({ children }) => (
+          <em className="italic text-gray-700">
+            {children}
+          </em>
+        ),
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-4">
+            <table className="min-w-full border border-gray-300 rounded-lg">
+              {children}
+            </table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th className="bg-gray-100 border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="border border-gray-300 px-4 py-2 text-gray-700">
+            {children}
+          </td>
+        ),
+        hr: () => (
+          <hr className="my-6 border-gray-300" />
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+};
+
 export default function AIAssistantPage() {
   const router = useRouter();
   const params = useParams();
   const modelId = params.id as string;
+  
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .markdown-content {
+        max-width: 100%;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+      }
+      
+      .markdown-content pre {
+        max-width: 100%;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      
+      .markdown-content code {
+        max-width: 100%;
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
+      
+      .markdown-content table {
+        max-width: 100%;
+        overflow-x: auto;
+        display: block;
+      }
+      
+      .markdown-content img {
+        max-width: 100%;
+        height: auto;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [model, setModel] = useState<Model | null>(null);
@@ -62,7 +290,6 @@ export default function AIAssistantPage() {
     const user = auth.getCurrentUser();
     setCurrentUser(user);
     
-    // Generate unique session ID for this chat
     const newSessionId = `model_${modelId}_${Date.now()}`;
     setSessionId(newSessionId);
     
@@ -75,12 +302,11 @@ export default function AIAssistantPage() {
     scrollToBottom();
   }, [messages]);
 
-  // Add a separate effect for smooth scrolling during streaming
   useEffect(() => {
     if (isTyping) {
       const interval = setInterval(() => {
         scrollToBottom();
-      }, 100); // Scroll every 100ms during typing
+      }, 100); 
       return () => clearInterval(interval);
     }
   }, [isTyping]);
@@ -96,7 +322,7 @@ export default function AIAssistantPage() {
       setModel(modelData);
       setVersions(modelData.versions || []);
       
-      // Initialize with welcome message and context
+
       initializeChat(modelData, modelData.versions || []);
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail;
@@ -119,7 +345,7 @@ export default function AIAssistantPage() {
   };
 
   const initializeChat = (modelData: Model, versions: Version[]) => {
-    const currentVersion = versions[0]; // Get the latest version
+    const currentVersion = versions[0]; 
     const biasContext = currentVersion?.report ? 
       `Current bias analysis shows: ${currentVersion.report.intentional_bias || 'No bias detected'}. Fairness score: ${currentVersion.report.fairness_score || 'N/A'}.` : 
       'No bias analysis available yet.';
@@ -168,7 +394,6 @@ ${modelData.github_url || 'Not connected'}
     setInputMessage("");
     setIsTyping(true);
 
-    // Create a placeholder message for the assistant response with initial "thinking" content
     const assistantMessageId = (Date.now() + 1).toString();
     const assistantMessage: Message = {
       id: assistantMessageId,
@@ -180,19 +405,18 @@ ${modelData.github_url || 'Not connected'}
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      // Check if the message is about GitHub or code analysis
       const messageLower = inputMessage.toLowerCase();
       let response;
       
       if (messageLower.includes('github') || messageLower.includes('repo') || messageLower.includes('connect') || 
           messageLower.includes('pull') || messageLower.includes('fetch') || messageLower.includes('code')) {
-        // Use the streaming analyze-model endpoint for GitHub-related queries
+                                          
         await apiService.analyzeModelCodeStream({
           model_id: parseInt(modelId),
           user_query: inputMessage,
           session_id: sessionId
         }, (chunk: string) => {
-          // Update the assistant message with the streaming content
+          
           setMessages(prev => prev.map(msg => 
             msg.id === assistantMessageId 
               ? { ...msg, content: msg.content === 'AI is thinking...' ? chunk : msg.content + chunk }
@@ -200,13 +424,13 @@ ${modelData.github_url || 'Not connected'}
           ));
         });
       } else {
-        // Use the streaming chat endpoint
+        
         await apiService.sendChatMessageStream({
           message: inputMessage,
           model_id: parseInt(modelId),
           session_id: sessionId
         }, (chunk: string) => {
-          // Update the assistant message with the streaming content
+          
           setMessages(prev => prev.map(msg => 
             msg.id === assistantMessageId 
               ? { ...msg, content: msg.content === 'AI is thinking...' ? chunk : msg.content + chunk }
@@ -215,14 +439,13 @@ ${modelData.github_url || 'Not connected'}
         });
       }
       
-      // Check if GitHub context was added (this would need to be handled differently with streaming)
-      // For now, we'll keep the existing logic but it might need adjustment
+      
       if (messageLower.includes('github') || messageLower.includes('repo') || messageLower.includes('connect')) {
         setHasGitHubContext(true);
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
-      // Update the assistant message with error content
+      
       setMessages(prev => prev.map(msg => 
         msg.id === assistantMessageId 
           ? { ...msg, content: `Sorry, I encountered an error: ${error.response?.data?.detail || 'Please try again later.'}` }
@@ -284,9 +507,9 @@ ${modelData.github_url || 'Not connected'}
   return (
     <AuthGuard>
       <div className="flex h-screen bg-gray-50">
-        {/* Sidebar */}
+        
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          {/* Header */}
+          
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 bg-[#0070C0] rounded-lg flex items-center justify-center">
@@ -317,7 +540,7 @@ ${modelData.github_url || 'Not connected'}
             </div>
           </div>
 
-          {/* Quick Actions */}
+          
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Actions</h3>
             <div className="space-y-2">
@@ -348,7 +571,7 @@ ${modelData.github_url || 'Not connected'}
             </div>
           </div>
 
-          {/* Navigation */}
+          
           <div className="flex-1 p-4">
             <button
               onClick={() => router.push(`/models/${model.id}`)}
@@ -359,9 +582,9 @@ ${modelData.github_url || 'Not connected'}
           </div>
         </div>
 
-        {/* Main Chat Area */}
+        
         <div className="flex-1 flex flex-col">
-          {/* Chat Header */}
+          
           <div className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -381,7 +604,7 @@ ${modelData.github_url || 'Not connected'}
             </div>
           </div>
 
-          {/* Messages */}
+          
           <div className="flex-1 overflow-y-auto bg-gray-50">
             <div className="px-4 py-6 space-y-6">
               <AnimatePresence>
@@ -409,7 +632,7 @@ ${modelData.github_url || 'Not connected'}
                         }`}
                       >
                         {message.type === 'assistant' ? (
-                          <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-em:text-gray-700 prose-code:bg-gray-100 prose-code:text-gray-800 prose-pre:bg-gray-100 prose-pre:text-gray-800 prose-blockquote:border-l-[#0070C0] prose-a:text-[#0070C0] prose-a:no-underline hover:prose-a:underline">
+                          <div className="markdown-content">
                             {message.content === 'AI is thinking...' ? (
                               <div className="flex items-center space-x-2">
                                 <div className="flex space-x-1">
@@ -420,11 +643,7 @@ ${modelData.github_url || 'Not connected'}
                                 <span className="text-sm text-gray-500">AI is thinking...</span>
                               </div>
                             ) : (
-                              <ReactMarkdown 
-                                remarkPlugins={[remarkGfm]}
-                              >
-                                {message.content}
-                              </ReactMarkdown>
+                              <CustomMarkdown content={message.content} />
                             )}
                           </div>
                         ) : (
@@ -452,7 +671,7 @@ ${modelData.github_url || 'Not connected'}
             </div>
           </div>
 
-          {/* Input Area */}
+                            
           <div className="bg-white border-t border-gray-200 px-6 py-4">
             <div className="flex items-end space-x-4">
               <div className="flex-1">

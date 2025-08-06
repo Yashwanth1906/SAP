@@ -130,7 +130,7 @@ export default function ModelDetailsPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50">
-        {/* Navigation */}
+        
         <nav className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -155,14 +155,14 @@ export default function ModelDetailsPage() {
           </div>
         </nav>
 
-        {/* Main Content */}
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            {/* Model Information */}
+            
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -267,7 +267,7 @@ export default function ModelDetailsPage() {
               </div>
             </div>
 
-            {/* Versions List */}
+                                
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-900">

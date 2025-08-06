@@ -43,21 +43,21 @@ export default function DashboardPage() {
         isPremium: currentUser.is_premium
       });
       
-      // Fetch models for the organization
+      
       fetchModels(currentUser.id);
     }
 
-    // Check for success parameter from payment
+    
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'true') {
       setSuccess('Payment successful! Your premium subscription has been activated.');
-      // Clear the URL parameter
+      
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
   useEffect(() => {
-    // Filter models based on search term
+    
     if (searchTerm.trim() === '') {
       setFilteredModels(models);
     } else {
@@ -105,10 +105,10 @@ export default function DashboardPage() {
   };
 
   const handleSignOut = () => {
-    // Clear all auth data
+    
     auth.logout();
     
-    // Redirect to login
+    
     router.push("/login");
   };
 
@@ -119,7 +119,7 @@ export default function DashboardPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50">
-        {/* Navigation */}
+        
         <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -152,14 +152,14 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      {/* Main Content */}
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          {/* Header with Add New Model Button */}
+          
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
@@ -180,7 +180,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Success Message */}
+          
           {success && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -213,7 +213,7 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* Premium Upgrade Banner for Non-Premium Users */}
+          
           {!userInfo.isPremium && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -245,7 +245,7 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* Search Bar */}
+          
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -263,7 +263,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Models List */}
+
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             {isLoading ? (
               <div className="p-8 text-center">
@@ -372,7 +372,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Organization Info Card */}
+                     
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Organization Information</h3>
             <div className="grid md:grid-cols-3 gap-4 text-sm">

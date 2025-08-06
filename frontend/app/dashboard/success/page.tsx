@@ -22,7 +22,7 @@ export default function PaymentSuccessPage() {
     }
 
     if (success) {
-      // Update user's premium status in localStorage
+      
       const currentUser = auth.getCurrentUser();
       if (currentUser) {
         auth.login({
@@ -31,7 +31,7 @@ export default function PaymentSuccessPage() {
         });
       }
 
-      // Redirect to dashboard after a short delay
+              
       setTimeout(() => {
         router.push('/dashboard');
       }, 3000);

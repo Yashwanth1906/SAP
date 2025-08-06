@@ -14,7 +14,6 @@ export default function CreateModelPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Form fields
   const [name, setName] = useState("");
   const [type, setType] = useState("Random Forest");
   const [description, setDescription] = useState("");
@@ -64,7 +63,6 @@ export default function CreateModelPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50">
-        {/* Navigation */}
         <nav className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -89,14 +87,12 @@ export default function CreateModelPage() {
           </div>
         </nav>
 
-        {/* Main Content */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            {/* Header */}
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Create New Model</h1>
               <p className="text-gray-600 mt-1">
@@ -104,7 +100,6 @@ export default function CreateModelPage() {
               </p>
             </div>
 
-            {/* Premium Upgrade Banner */}
             {!isPremium && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -137,10 +132,8 @@ export default function CreateModelPage() {
               </motion.div>
             )}
 
-            {/* Form */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Model Name */}
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                     Model Name *
@@ -156,7 +149,6 @@ export default function CreateModelPage() {
                   />
                 </div>
 
-                {/* Model Type */}
                 <div>
                   <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
                     Model Type *
@@ -177,7 +169,6 @@ export default function CreateModelPage() {
                   </select>
                 </div>
 
-                {/* Description */}
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
                     Description
@@ -192,7 +183,6 @@ export default function CreateModelPage() {
                   />
                 </div>
 
-                {/* GitHub URL - Premium Feature */}
                 <div className={`${!isPremium ? 'opacity-50' : ''}`}>
                   <div className="flex items-center justify-between mb-2">
                     <label htmlFor="githubUrl" className="block text-sm font-medium text-gray-700">
@@ -222,7 +212,6 @@ export default function CreateModelPage() {
                   )}
                 </div>
 
-                {/* GitHub Actions Toggle - Premium Feature */}
                 <div className={`${!isPremium ? 'opacity-50' : ''}`}>
                   <div className="flex items-center justify-between">
                     <label className="flex items-center space-x-3">
@@ -254,7 +243,6 @@ export default function CreateModelPage() {
                   </p>
                 </div>
 
-                {/* Error/Success Messages */}
                 {error && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -275,7 +263,7 @@ export default function CreateModelPage() {
                   </motion.div>
                 )}
 
-                {/* Submit Button */}
+                                          
                 <div className="flex justify-end space-x-4">
                   <button
                     type="button"

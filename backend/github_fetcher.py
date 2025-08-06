@@ -10,7 +10,7 @@ class GitHubFetcher:
         self.headers = {
             "Accept": "application/vnd.github.v3+json"
         }
-        # File extensions to consider relevant
+        
         self.relevant_extensions = {
             '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.cpp', '.c', '.h', 
             '.hpp', '.cs', '.php', '.rb', '.go', '.rs', '.swift', '.kt', 
@@ -22,7 +22,7 @@ class GitHubFetcher:
             '.package', '.composer', '.gemfile', '.pom', '.gradle'
         }
         
-        # Directories to exclude
+        
         self.exclude_dirs = {
             '.git', '__pycache__', 'node_modules', '.venv', 'venv', 
             'env', '.env', 'build', 'dist', 'target', 'bin', 'obj',
@@ -30,8 +30,7 @@ class GitHubFetcher:
         }
 
     def parse_github_url(self, url: str) -> Optional[Dict[str, str]]:
-        """Parse GitHub URL to extract owner, repo, and path."""
-        # Handle different GitHub URL formats
+        
         patterns = [
             r'https://github\.com/([^/]+)/([^/]+)(?:/tree/[^/]+/(.+))?',
             r'https://github\.com/([^/]+)/([^/]+)(?:/blob/[^/]+/(.+))?',
@@ -52,7 +51,7 @@ class GitHubFetcher:
         return None
 
     def get_file_content(self, owner: str, repo: str, path: str = "") -> Dict[str, str]:
-        """Fetch file content from GitHub repository."""
+        
         api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
         
         try:
@@ -67,12 +66,10 @@ class GitHubFetcher:
             return {}
 
     def is_relevant_file(self, filename: str) -> bool:
-        """Check if file is relevant based on extension and name."""
-        # Check file extension
+        
         if any(filename.endswith(ext) for ext in self.relevant_extensions):
             return True
         
-        # Check for important files without extensions
         important_files = {
             'dockerfile', 'docker-compose', 'makefile', 'readme', 'license',
             'requirements', 'setup', 'package', 'gemfile', 'pom', 'gradle',
@@ -83,12 +80,12 @@ class GitHubFetcher:
         return any(name in filename_lower for name in important_files)
 
     def should_exclude_path(self, path: str) -> bool:
-        """Check if path should be excluded."""
+        
         path_parts = path.lower().split('/')
         return any(part in self.exclude_dirs for part in path_parts)
 
     def fetch_repository_files(self, github_url: str) -> Dict[str, str]:
-        """Fetch all relevant files from a GitHub repository."""
+        
         parsed = self.parse_github_url(github_url)
         if not parsed:
             print("Invalid GitHub URL")
@@ -117,7 +114,7 @@ class GitHubFetcher:
                             file_path = item['path']
                             if not self.should_exclude_path(file_path):
                                 if self.is_relevant_file(file_path):
-                                    # Fetch file content
+                                    
                                     file_content = self.get_file_content(owner, repo, file_path)
                                     if file_content and 'content' in file_content:
                                         try:
@@ -131,7 +128,7 @@ class GitHubFetcher:
                             if not self.should_exclude_path(dir_path):
                                 files_to_process.append(dir_path)
                 
-                elif isinstance(content_data, dict) and 'content' in content_data:  # Single file
+                elif isinstance(content_data, dict) and 'content' in content_data:  
                     try:
                         decoded_content = base64.b64decode(content_data['content']).decode('utf-8')
                         files_content[current_path] = decoded_content
@@ -145,7 +142,7 @@ class GitHubFetcher:
         return files_content
 
     def format_for_llm(self, files_content: Dict[str, str]) -> str:
-        """Format the fetched files for LLM consumption."""
+        
         if not files_content:
             return "No relevant files found in the repository."
         
@@ -161,10 +158,10 @@ class GitHubFetcher:
         return formatted_content
 
 def main():
-    """Test the GitHub fetcher."""
+    
     fetcher = GitHubFetcher()
     
-    # Test with a sample repository
+    
     test_url = "https://github.com/shivasankaran18/model_test"
     
     print("Fetching files from GitHub repository...")
@@ -175,11 +172,11 @@ def main():
         for file_path in files_content.keys():
             print(f"  - {file_path}")
         
-        # Format for LLM
+
         llm_content = fetcher.format_for_llm(files_content)
         print(f"\nFormatted content length: {len(llm_content)} characters")
         
-        # Save to file for inspection
+        
         with open('github_code_analysis.txt', 'w', encoding='utf-8') as f:
             f.write(llm_content)
         print("Content saved to github_code_analysis.txt")

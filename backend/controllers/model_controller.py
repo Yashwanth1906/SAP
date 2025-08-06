@@ -18,14 +18,14 @@ def convert_numpy_types(obj):
     if isinstance(obj, np.integer):
         return int(obj)
     elif isinstance(obj, np.floating):
-        # Handle inf, -inf, and NaN values
+      
         if np.isinf(obj) or np.isnan(obj):
             return 0.0
         return float(obj)
     elif isinstance(obj, np.ndarray):
-        # Handle arrays with inf/nan values
-        if obj.dtype.kind in ['f', 'c']:  # float or complex
-            # Replace inf and nan with 0
+ 
+        if obj.dtype.kind in ['f', 'c']:  
+          
             obj_clean = np.where(np.isinf(obj) | np.isnan(obj), 0.0, obj)
             return obj_clean.tolist()
         return obj.tolist()
@@ -41,7 +41,7 @@ import requests
 def read_csv_headers(file_path: str) -> list[str]:
     """Read the header row from a CSV file"""
     try:
-        # Try different encodings
+    
         encodings = ['utf-8', 'latin-1', 'cp1252']
         
         for encoding in encodings:
@@ -56,7 +56,7 @@ def read_csv_headers(file_path: str) -> list[str]:
             except StopIteration:
                 continue
         
-        # If all encodings fail, try with pandas
+  
         try:
             df = pd.read_csv(file_path, nrows=0)
             return list(df.columns)
@@ -71,14 +71,14 @@ def read_csv_headers(file_path: str) -> list[str]:
 def read_csv_sample_data(file_path: str, num_lines: int = 4) -> list[list[str]]:
     """Read the first few lines of data from a CSV file"""
     try:
-        # Try different encodings
+       
         encodings = ['utf-8', 'latin-1', 'cp1252']
         
         for encoding in encodings:
             try:
                 with open(file_path, 'r', encoding=encoding) as file:
                     csv_reader = csv.reader(file)
-                    # Skip header
+                   
                     next(csv_reader)
                     
                     sample_data = []
@@ -94,7 +94,7 @@ def read_csv_sample_data(file_path: str, num_lines: int = 4) -> list[list[str]]:
             except StopIteration:
                 continue
         
-        # If all encodings fail, try with pandas
+       
         try:
             df = pd.read_csv(file_path, nrows=num_lines)
             return df.values.tolist()
@@ -121,7 +121,7 @@ def get_model_description(model_id: int) -> str:
 def generate_unbiased_test_data(headers: list[str], model_description: str, sample_data: list[list[str]] = None) -> str:
     """Generate unbiased test data using Groq API"""
     try:
-        print(f"Initializing Groq client...")
+       
         
         GROQ_API_KEY = os.getenv("GROQ_API_KEY")
         client = Groq(api_key=GROQ_API_KEY)
@@ -157,8 +157,7 @@ def generate_unbiased_test_data(headers: list[str], model_description: str, samp
         Generate the CSV data now:
         """
         
-        print(f"Sending prompt to Groq API...")
-        print(f"Prompt length: {len(prompt)} characters")
+       
         
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -174,10 +173,10 @@ def generate_unbiased_test_data(headers: list[str], model_description: str, samp
             stream=False,
         )
         
-        print(f"Received response from Groq API")
+       
         
         csv_data = completion.choices[0].message.content.strip()
-        print(f"Raw response length: {len(csv_data)} characters")
+       
         
         if csv_data.startswith('```'):
             lines = csv_data.split('\n')
@@ -187,7 +186,7 @@ def generate_unbiased_test_data(headers: list[str], model_description: str, samp
             csv_data = ','.join(headers) + '\n' + csv_data
         
         lines = csv_data.strip().split('\n')
-        print(f"Number of lines in generated data: {len(lines)}")
+       
         
         if len(lines) < 2:
             raise Exception("Generated data has insufficient rows")
@@ -199,7 +198,7 @@ def generate_unbiased_test_data(headers: list[str], model_description: str, samp
                 lines.append(','.join([''] * len(headers)))
             csv_data = '\n'.join(lines)
         
-        print(f"Final CSV data has {len(csv_data.split(chr(10)))} lines")
+       
         return csv_data
         
     except Exception as e:
@@ -300,14 +299,14 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
     try:
         print(f"Starting comprehensive fairness analysis for model: {model_file_path}")
         
-        # Load the model
+
         try:
-            # Try loading as pickle first
+            
             with open(model_file_path, 'rb') as f:
                 pipeline = pickle.load(f)
         except:
             try:
-                # Try loading as joblib
+            
                 pipeline = joblib.load(model_file_path)
             except Exception as e:
                 print(f"Failed to load model: {str(e)}")
@@ -318,7 +317,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                     "error": "Failed to load model"
                 }
         
-        # Handle different model formats
+      
         probas = None
         is_string_array = False
         if isinstance(pipeline, np.ndarray):
@@ -326,14 +325,14 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
             if len(pipeline.shape) == 1:
                 print("Detected numpy array as predictions")
                 
-                # Check if the array contains string values (like feature names)
-                if pipeline.dtype.kind in ['U', 'S', 'O']:  # String types
+                
+                if pipeline.dtype.kind in ['U', 'S', 'O']:  
                     print("Warning: Numpy array contains string values, treating as feature names")
                     print(f"Array content: {pipeline}")
                     is_string_array = True
-                    # We'll create dummy predictions after loading the test data
+                
                 else:
-                    # Valid numeric predictions
+                    
                     y_pred = pipeline
                     probas = pipeline.astype(float)
                 
@@ -362,14 +361,14 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                 "error": f"Loaded object is not a valid model. Expected model with predict method, got {type(pipeline)}"
             }
         
-        # Load test dataset
+        
         try:
-            # Read CSV with explicit header handling
+           
             test_data = pd.read_csv(test_dataset_path, encoding='utf-8', on_bad_lines='skip', header=0)
             print(f"Loaded test dataset with {len(test_data)} rows and {len(test_data.columns)} columns")
             print(f"Columns: {test_data.columns.tolist()}")
             
-            # Ensure we have data rows (not just headers)
+           
             if len(test_data) == 0:
                 raise Exception("No data rows found in CSV file")
                 
@@ -391,7 +390,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                     "error": "Failed to load test dataset"
                 }
         
-        # Identify target column
+       
         target_col = None
         for col in ['target', 'label', 'y', 'class', 'selected']:
             if col in test_data.columns:
@@ -401,7 +400,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
         if target_col is None:
             target_col = test_data.columns[-1]
         
-        # Identify sensitive attributes
+       
         if sensitive_attributes is None:
             sensitive_attributes = []
             for col in test_data.columns:
@@ -417,19 +416,19 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
         print(f"Using target column: {target_col}")
         print(f"Using sensitive attributes: {sensitive_attributes}")
         
-        # Prepare features and target
+       
         feature_cols = [col for col in test_data.columns if col != target_col]
         X = test_data[feature_cols].copy()
         y_true = test_data[target_col].values
         
-        # Create dummy predictions if we detected a string array
+       
         if is_string_array:
             print("Creating dummy predictions for string array model")
             y_pred = np.random.randint(0, 2, size=len(X))
             probas = np.random.random(size=len(X))
             print(f"Created dummy predictions: {len(y_pred)} predictions, {len(probas)} probabilities")
         
-        # Ensure target values are numeric
+       
         if y_true.dtype == object or y_true.dtype.kind in ['U', 'S']:
             print("Converting target values to numeric")
             y_true = pd.to_numeric(y_true, errors='coerce')
@@ -437,7 +436,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
         elif y_true.dtype != int:
             y_true = y_true.astype(int)
         
-        # Get model predictions
+       
         try:
             if 'y_pred' in locals() and probas is not None:
                 print("Using pre-loaded predictions from numpy array")
@@ -449,7 +448,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                         y_pred = np.concatenate([y_pred, np.zeros(len(X) - len(y_pred))])
                         probas = np.concatenate([probas, np.zeros(len(X) - len(probas))])
             else:
-                # Handle categorical variables for prediction
+               
                 if hasattr(pipeline, 'feature_names_in_'):
                     from sklearn.preprocessing import LabelEncoder
                     X_encoded = X.copy()
@@ -461,12 +460,12 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                 else:
                     X_encoded = X
                 
-                # Get predictions and probabilities
+               
                 y_pred = pipeline.predict(X_encoded)
                 probas = pipeline.predict_proba(X_encoded)[:, 1] if hasattr(pipeline, 'predict_proba') else None
                 
                 if probas is None:
-                    # If no predict_proba, create dummy probabilities
+                    
                     probas = y_pred.astype(float)
             
         except Exception as e:
@@ -512,19 +511,19 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
             tn, fp, fn, tp = confusion_matrix(y_t, y_p, labels=[0, 1]).ravel()
             return fp / (fp + tn) if (fp + tn) > 0 else 0
         
-        # Apply intentional bias based on intended selection rates
+        
         y_pred_biased = np.copy(y_pred)
         intended_selection_rate = {}
         
-        # Set intended selection rates (equal for all groups by default)
+        
         for col in sensitive_attributes:
             if col in X.columns:
                 values = X[col].unique()
                 for val in values:
                     group_id = f"{col}={val}"
-                    intended_selection_rate[group_id] = 0.5  # Default equal selection rate
+                    intended_selection_rate[group_id] = 0.5  
         
-        # Apply intentional bias
+        
         for col in sensitive_attributes:
             if col in X.columns:
                 for val in X[col].unique():
@@ -532,16 +531,16 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                     group_indices = np.where(group_mask)[0]
                     
                     if len(group_indices) > 0:
-                        # Sort by probability (highest first)
+                        
                         sorted_indices = group_indices[np.argsort(probas[group_indices])[::-1]]
                         intended_rate = intended_selection_rate.get(f"{col}={val}", 0.5)
                         num_to_select = int(intended_rate * len(sorted_indices))
                         
-                        # Apply bias: set all to 0, then set top num_to_select to 1
+                        
                         y_pred_biased[sorted_indices] = 0
                         y_pred_biased[sorted_indices[:num_to_select]] = 1
         
-        # Calculate fairness metrics per group
+        
         metrics = {"Selection Rate": {}, "TPR": {}, "FPR": {}, "EO_TPR": {}}
         
         for col in sensitive_attributes:
@@ -564,8 +563,8 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                         except (ValueError, RuntimeWarning):
                             metrics["FPR"][key] = 0.0
                         
-                        # Equal Opportunity (TPR on qualified only)
-                        # For now, assume all are qualified if no qualification column exists
+                        
+                        
                         qualified_mask = np.ones(len(y_true), dtype=bool)
                         qualified_group_mask = group_mask & qualified_mask
                         
@@ -577,7 +576,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                         else:
                             metrics["EO_TPR"][key] = 0.0
         
-        # Calculate bias score
+        
         dp_diffs, eo_diffs, fpr_diffs, tpr_diffs = [], [], [], []
         
         for col in sensitive_attributes:
@@ -603,7 +602,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                         except (ValueError, TypeError):
                             tpr_diffs.append(0)
         
-        # Calculate final metrics with safe handling
+        
         try:
             aod = 0.5 * (np.mean(fpr_diffs) + np.mean(tpr_diffs)) if fpr_diffs and tpr_diffs else 0
         except (ValueError, RuntimeWarning):
@@ -617,7 +616,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
             
         fairness_score = max(0, min(1, 1 - bias_score))  # Clamp between 0 and 1
         
-        # Prepare bias metrics for each sensitive attribute
+        
         bias_metrics = {}
         intentional_bias_list = []
         
@@ -634,7 +633,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
                 }
                 intentional_bias_list.append(col)
         
-        # Determine if model is certified
+
         certification_status = "CERTIFIED FAIR" if fairness_score >= 0.85 else "NOT FAIR"
         
         response_data = {
@@ -654,7 +653,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
         
         print(f"Fairness analysis completed. Score: {fairness_score:.3f}, Status: {certification_status}")
         
-        # Convert all numpy types in the response
+       
         return convert_numpy_types(response_data)
         
     except Exception as e:
@@ -669,7 +668,7 @@ def perform_fairness_analysis(model_file_path: str, test_dataset_path: str, sens
         }
 
 def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
-    """Get detailed versions of a model with reports and certification types"""
+   
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("""
@@ -759,7 +758,7 @@ def get_model_versions_with_details(model_id: int) -> ModelWithVersions:
 
 def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFile, version_name: str, 
                  selection_data: Optional[str] = None, intentional_bias: Optional[str] = None) -> dict:
-    """Certify a model for bias analysis with file uploads"""
+   
     try:
         assets_dir = os.path.join(os.getcwd(), "assets")
         if not os.path.exists(assets_dir):
@@ -780,25 +779,25 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
         unbiased_dataset_path = None
         
         try:
-            print(f"Starting unbiased test data generation for model {model_id}")
+            
             
             headers = read_csv_headers(dataset_file_path)
-            print(f"Found {len(headers)} columns: {headers}")
+            
             
             sample_data = read_csv_sample_data(dataset_file_path, 4)
-            print(f"Read {len(sample_data)} sample data rows for context")
+            
 
             model_description = get_model_description(model_id)
-            print(f"Model description: {model_description[:100]}...")
             
-            print("Calling Groq API to generate unbiased test data...")
+            
+           
             unbiased_test_data = generate_unbiased_test_data(headers, model_description, sample_data)
-            print(f"Generated {len(unbiased_test_data.split(chr(10)))} lines of test data")
+           
             
             unbiased_dataset_path = os.path.join(model_assets_dir, f"unbiased_test_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
             with open(unbiased_dataset_path, "w", encoding="utf-8") as file:
                 file.write(unbiased_test_data)
-            print(f"Saved unbiased test dataset to: {unbiased_dataset_path}")
+           
                 
         except Exception as e:
             unbiased_dataset_path = None
@@ -849,7 +848,7 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 if bias_metrics:
                     bias_features = ",".join(bias_metrics.keys())
                 
-                # Enhanced SHAP analysis with detailed metrics
+
                 shap_details = []
                 for attr, metrics in bias_metrics.items():
                     dp_diff = metrics.get("demographic_parity_diff", 0)
@@ -862,7 +861,7 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
                 if shap_details:
                     shap_analysis = "Comprehensive fairness metrics by attribute: " + "; ".join(shap_details)
                 
-                # Add overall metrics to SHAP analysis
+                
                 overall_dp = fairness_results.get("demographic_parity_diff", 0)
                 overall_eo = fairness_results.get("equal_opportunity_diff", 0)
                 overall_fpr = fairness_results.get("fpr_diff", 0)
@@ -886,7 +885,7 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
             cursor.execute("SELECT MAX(ID) FROM REPORTS WHERE MODEL_ID = ?", (model_id,))
             report_id = int(cursor.fetchone()[0])
 
-            # Enhanced certificate type determination based on new algorithm
+            
             if fairness_results:
                 certification_status = fairness_results.get("certification_status", "NOT FAIR")
                 fairness_score = fairness_results.get("fairness_score", 0.5)
@@ -1000,7 +999,7 @@ def certify_model(model_id: int, model_file: UploadFile, dataset_file: UploadFil
         raise HTTPException(status_code=500, detail=f"Failed to certify model: {str(e)}")
 
 def publish_version(version_id: int) -> dict:
-    """Publish a version"""
+    
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("SELECT ID FROM VERSIONS WHERE ID = ?", (version_id,))
@@ -1019,7 +1018,7 @@ def publish_version(version_id: int) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to publish version: {str(e)}")
 
 def create_certification_type(certification_data: CertificationTypeBase) -> dict:
-    """Create a new certification type"""
+    
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("""
@@ -1046,7 +1045,7 @@ def create_certification_type(certification_data: CertificationTypeBase) -> dict
         raise HTTPException(status_code=500, detail=f"Failed to create certification type: {str(e)}")
 
 def create_report(report_data: ReportBase, model_id: int) -> dict:
-    """Create a new report for a model"""
+    
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("SELECT ID FROM MODELS WHERE ID = ?", (model_id,))
@@ -1085,7 +1084,7 @@ def create_report(report_data: ReportBase, model_id: int) -> dict:
         raise HTTPException(status_code=500, detail=f"Failed to create report: {str(e)}")
 
 def create_version(version_data: VersionBase, model_id: int) -> dict:
-    """Create a new version for a model"""
+
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("SELECT ID FROM MODELS WHERE ID = ?", (model_id,))
@@ -1190,7 +1189,7 @@ def download_github_file(url:str):
         print(f"Error: {response.status_code} - {response.text}")
 
 def download_github_folder(user: str, repo: str, branch: str, folder_path: str) -> list:
-    """Download all files in a folder from GitHub and return their local paths"""
+   
     api_url = f"https://api.github.com/repos/{user}/{repo}/contents/{folder_path}?ref={branch}"
     headers = {"Accept": "application/vnd.github.v3+json"}
     response = requests.get(api_url, headers=headers)
@@ -1227,23 +1226,23 @@ def addalerts(repo_url: str):
             version_row = cursor.fetchone()
             version_id = version_row[0] if version_row else None
 
-        # Parse repo_url to get user, repo, and branch (assume 'main' if not specified)
+       
         parts = repo_url.rstrip('/').split('/')
         user = parts[3]
         repo = parts[4]
-        branch = 'main'  # Default branch
-        # Optionally, fetch default branch from GitHub API
+        branch = 'main'  
+        
         repo_api_url = f"https://api.github.com/repos/{user}/{repo}"
         repo_resp = requests.get(repo_api_url)
         if repo_resp.status_code == 200:
             branch = repo_resp.json().get('default_branch', 'main')
 
-        # Download model files from 'models' folder
+       
         model_files = download_github_folder(user, repo, branch, 'models')
-        # Download test files from 'test' folder (optional, if needed)
+       
         test_files = download_github_folder(user, repo, branch, 'test')
 
-        # For demonstration, use the first model file and first test file (if available)
+                                                                            
         model_file_path = model_files[0] if model_files else None
         dataset_file_path = test_files[0] if test_files else None
         version_name = f"AutoCert_{datetime.now().strftime('%Y%m%d_%H%M%S')}"

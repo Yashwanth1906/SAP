@@ -6,7 +6,7 @@ router = APIRouter(prefix="/api", tags=["Public API"])
 
 @router.get("/companies", response_model=List[dict])
 def get_all_companies():
-    """Get all companies for public viewing"""
+    
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("""
@@ -32,7 +32,7 @@ def get_all_companies():
 
 @router.get("/companies/{company_id}", response_model=dict)
 def get_company(company_id: str):
-    """Get specific company details"""
+    
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("""
@@ -60,7 +60,7 @@ def get_company(company_id: str):
 
 @router.get("/companies/{company_id}/models", response_model=List[dict])
 def get_company_models(company_id: str):
-    """Get all models for a specific company"""
+    
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("""
@@ -114,7 +114,7 @@ def get_company_models(company_id: str):
                         "certificationType": None
                     }
                 
-                # Check if version exists (row[5] is VERSION_ID)
+                
                 if row[5] is not None:
                     models[model_id]["certificationStatus"] = "Certified"
                     models[model_id]["certificationDate"] = row[7].isoformat() if row[7] else None
@@ -124,14 +124,14 @@ def get_company_models(company_id: str):
                         "created_at": row[7].isoformat() if row[7] else None
                     }
                     
-                    # Handle report fairness score (row[8])
+                    
                     if row[8] is not None and row[8] != 'None':
                         try:
                             models[model_id]["fairnessScore"] = float(row[8])
                         except (ValueError, TypeError):
                             models[model_id]["fairnessScore"] = None
                     
-                    # Add report data if any report fields exist
+                    
                     if row[8] is not None or row[10] is not None or row[11] is not None:
                         fairness_score = None
                         if row[8] is not None and row[8] != 'None':
@@ -146,9 +146,9 @@ def get_company_models(company_id: str):
                             "intentionalBias": row[11] if row[11] is not None and row[11] != 'None' else None
                         }
 
-                    # Add certification type data if certification type exists
+                                    
                     if row[12] is not None:
-                        # Check if row[13] exists before accessing it
+                        
                         cert_description = None
                         if len(row) > 13 and row[13] is not None and row[13] != 'None':
                             cert_description = row[13]
