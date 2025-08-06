@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     const currentUser = auth.getCurrentUser();
@@ -44,6 +45,14 @@ export default function DashboardPage() {
       
       // Fetch models for the organization
       fetchModels(currentUser.id);
+    }
+
+    // Check for success parameter from payment
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      setSuccess('Payment successful! Your premium subscription has been activated.');
+      // Clear the URL parameter
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
@@ -170,6 +179,39 @@ export default function DashboardPage() {
               <span>Add New Model</span>
             </button>
           </div>
+
+          {/* Success Message */}
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-green-50 border border-green-200 rounded-lg p-4"
+            >
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-green-800">
+                    Payment Successful!
+                  </h3>
+                  <p className="text-sm text-green-700 mt-1">
+                    {success}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSuccess('')}
+                  className="text-green-400 hover:text-green-600"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </motion.div>
+          )}
 
           {/* Premium Upgrade Banner for Non-Premium Users */}
           {!userInfo.isPremium && (

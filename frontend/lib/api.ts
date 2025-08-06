@@ -276,4 +276,42 @@ export const apiService = {
     const response = await api.get(`/chat/session/${sessionId}/context`);
     return response.data;
   },
+
+  // Payment services
+  createOrder: async (data: {
+    planId: string;
+    organizationId: number;
+    planName: string;
+    price: number;
+  }) => {
+    const response = await api.post('/payments/create-order', data);
+    return response.data;
+  },
+
+  createSubscription: async (data: {
+    planId: string;
+    organizationId: number;
+    planName: string;
+    price: number;
+  }) => {
+    const response = await api.post('/payments/create-subscription', data);
+    return response.data;
+  },
+
+  verifyPayment: async (data: {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+    organizationId: number;
+    planId: string;
+    planName: string;
+  }) => {
+    const response = await api.post('/payments/verify-payment', data);
+    return response.data;
+  },
+
+  getSubscriptionStatus: async (organizationId: number) => {
+    const response = await api.get(`/payments/subscription/${organizationId}`);
+    return response.data;
+  },
 }; 
