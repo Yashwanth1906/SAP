@@ -41,11 +41,13 @@ export default function ModelDetailsPage() {
   const [versions, setVersions] = useState<Version[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isPremium, setIsPremium] = useState(false);
   const [showWebhookPopup, setShowWebhookPopup] = useState(false);
 
   useEffect(() => {
     const user = auth.getCurrentUser();
     setCurrentUser(user);
+    setIsPremium(auth.isPremium());
     
     if (modelId) {
       fetchModelDetails();
@@ -234,7 +236,7 @@ export default function ModelDetailsPage() {
                       <span className="text-sm font-medium text-gray-700">Organization ID:</span>
                       <span className="ml-2 text-gray-900">{model.organization_id}</span>
                     </div>
-                    {model.github_url && (
+                    {model.github_url && isPremium && (
                       <div>
                         <span className="text-sm font-medium text-gray-700">GitHub:</span>
                         <a 
@@ -247,7 +249,13 @@ export default function ModelDetailsPage() {
                         </a>
                       </div>
                     )}
-                    {model.github_actions && (
+                    {model.github_url && !isPremium && (
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">GitHub:</span>
+                        <span className="ml-2 text-gray-500 italic">Premium feature - upgrade to view</span>
+                      </div>
+                    )}
+                    {model.github_actions && isPremium && (
                       <div>
                         <span className="text-sm font-medium text-gray-700">GitHub Actions:</span>
                         <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -257,6 +265,12 @@ export default function ModelDetailsPage() {
                         }`}>
                           {model.github_actions ? 'Enabled' : 'Disabled'}
                         </span>
+                      </div>
+                    )}
+                    {model.github_actions && !isPremium && (
+                      <div>
+                        <span className="text-sm font-medium text-gray-700">GitHub Actions:</span>
+                        <span className="ml-2 text-gray-500 italic">Premium feature - upgrade to view</span>
                       </div>
                     )}
                   </div>

@@ -18,7 +18,8 @@ def initialize_schema():
                         LOGO NVARCHAR(255),
                         TYPE NVARCHAR(255),
                         CONTACT_NUMBER NVARCHAR(255),
-                        CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        ISPREMIUM TINYINT DEFAULT 0
                     )
                 """)
             except Exception:

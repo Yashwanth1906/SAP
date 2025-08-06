@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,10 +31,20 @@ export default function LoginPage() {
         id: data.id,
         name: data.name,
         email: data.email,
+        is_premium: data.is_premium || false,
       });
       
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // Show success message with premium status
+      if (data.is_premium) {
+        setSuccess("Welcome back! You're signed in with Premium access.");
+      } else {
+        setSuccess("Welcome back! You're signed in with Basic access.");
+      }
+      
+      // Redirect to dashboard after a short delay
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 1500);
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail;
       setError(typeof errorMessage === 'string' ? errorMessage : "An error occurred. Please try again.");
@@ -125,6 +136,16 @@ export default function LoginPage() {
                 className="bg-red-50 border border-red-200 rounded-md p-3"
               >
                 <p className="text-sm text-red-600">{error}</p>
+              </motion.div>
+            )}
+
+            {success && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-green-50 border border-green-200 rounded-md p-3"
+              >
+                <p className="text-sm text-green-600">{success}</p>
               </motion.div>
             )}
 

@@ -30,6 +30,7 @@ class OrganizationResponse(BaseModel):
     id: int
     name: str
     email: str
+    is_premium: bool = False
 
 class ModelBase(BaseModel):
     name: str

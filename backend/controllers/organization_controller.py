@@ -48,14 +48,15 @@ def create_organization(org_data: OrganizationCreate) -> OrganizationResponse:
             
             # Get the created organization
             cursor.execute("""
-                SELECT ID, NAME, EMAIL FROM ORGANIZATIONS WHERE EMAIL = ?
+                SELECT ID, NAME, EMAIL, ISPREMIUM FROM ORGANIZATIONS WHERE EMAIL = ?
             """, (org_data.email,))
             
             org = cursor.fetchone()
             return OrganizationResponse(
                 id=org[0],
                 name=org[1],
-                email=org[2]
+                email=org[2],
+                is_premium=bool(org[3])
             )
             
     except HTTPException:
@@ -69,7 +70,7 @@ def login_organization(login_data: OrganizationLogin) -> OrganizationResponse:
         with db_manager.get_cursor() as cursor:
             # Get organization by email
             cursor.execute("""
-                SELECT ID, NAME, EMAIL, PASSWORD FROM ORGANIZATIONS WHERE EMAIL = ?
+                SELECT ID, NAME, EMAIL, PASSWORD, ISPREMIUM FROM ORGANIZATIONS WHERE EMAIL = ?
             """, (login_data.email,))
             
             org = cursor.fetchone()
@@ -83,7 +84,8 @@ def login_organization(login_data: OrganizationLogin) -> OrganizationResponse:
             return OrganizationResponse(
                 id=org[0],
                 name=org[1],
-                email=org[2]
+                email=org[2],
+                is_premium=bool(org[4])
             )
             
     except HTTPException:
