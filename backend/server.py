@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import organization_router, model_router, schema_router, public_router, chat_router
+from routes import organization_router, model_router, schema_router, public_router, chat_router, payment_router
 from db.connection import db_manager
 
 app = FastAPI(title="SAP HANA AI Model Management", version="1.0.0")
@@ -18,6 +18,7 @@ app.include_router(model_router)
 app.include_router(schema_router)
 app.include_router(public_router)
 app.include_router(chat_router)
+app.include_router(payment_router)
 
 @app.get("/")
 def root():

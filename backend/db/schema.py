@@ -18,7 +18,10 @@ def initialize_schema():
                         LOGO NVARCHAR(255),
                         TYPE NVARCHAR(255),
                         CONTACT_NUMBER NVARCHAR(255),
-                        CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        ISPREMIUM TINYINT DEFAULT 0,
+                        RAZORPAY_CUSTOMER_ID NVARCHAR(255),
+                        RAZORPAY_SUBSCRIPTION_ID NVARCHAR(255)
                     )
                 """)
             except Exception:

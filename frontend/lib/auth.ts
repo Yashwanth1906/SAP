@@ -4,6 +4,7 @@ export interface AuthUser {
   id: number;
   name: string;
   email: string;
+  is_premium: boolean;
 }
 
 export const auth = {
@@ -12,6 +13,7 @@ export const auth = {
     localStorage.setItem('organization_id', user.id.toString());
     localStorage.setItem('organization_name', user.name);
     localStorage.setItem('organization_email', user.email);
+    localStorage.setItem('is_premium', user.is_premium.toString());
     localStorage.setItem('isAuthenticated', 'true');
   },
 
@@ -20,6 +22,7 @@ export const auth = {
     const id = localStorage.getItem('organization_id');
     const name = localStorage.getItem('organization_name');
     const email = localStorage.getItem('organization_email');
+    const isPremium = localStorage.getItem('is_premium');
     const isAuthenticated = localStorage.getItem('isAuthenticated');
 
     if (!isAuthenticated || !id || !name || !email) {
@@ -30,6 +33,7 @@ export const auth = {
       id: parseInt(id),
       name,
       email,
+      is_premium: isPremium === 'true',
     };
   },
 
@@ -43,6 +47,7 @@ export const auth = {
     localStorage.removeItem('organization_id');
     localStorage.removeItem('organization_name');
     localStorage.removeItem('organization_email');
+    localStorage.removeItem('is_premium');
     localStorage.removeItem('isAuthenticated');
   },
 
@@ -60,5 +65,10 @@ export const auth = {
   // Get organization email
   getOrganizationEmail: (): string | null => {
     return localStorage.getItem('organization_email');
+  },
+
+  // Check if user is premium
+  isPremium: (): boolean => {
+    return localStorage.getItem('is_premium') === 'true';
   },
 }; 
