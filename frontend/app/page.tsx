@@ -38,10 +38,16 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center space-x-3"
             >
-              <div className="w-10 h-10 bg-[#0070C0] rounded flex items-center justify-center">
-                <span className="text-white font-bold text-sm">BC</span>
+              <div className="relative w-10 h-15 rounded overflow-hidden flex items-center justify-center">
+                <img
+                  src="/sap-logo.png"
+                  alt="SAP Logo"
+                  className="w-full h-full object-contain"
+                  style={{ zIndex: 1 }}
+                />
+                <div className="absolute inset-0 backdrop-blur-[1.1px] bg-white/10" style={{ zIndex: 2 }} />
               </div>
-              <span className="text-xl font-semibold text-gray-900">BiasCertify</span>
+              <span className="text-xl font-semibold text-gray-900">SAP FAIRCERT</span>
             </motion.div>
             
             <motion.div 
@@ -79,7 +85,7 @@ export default function Home() {
               AI Fairness
               <span className="text-[#0070C0]"> Certification</span>
               <br />
-              for Hiring
+              for Models.
             </motion.h1>
             
             <motion.p 
