@@ -8,6 +8,8 @@ import { apiService } from "@/lib/api";
 import AuthGuard from "@/components/AuthGuard";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { tomorrow } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 interface Model {
   id: number;
@@ -40,10 +42,245 @@ interface Message {
   timestamp: Date;
 }
 
+// Custom components for markdown rendering
+const CodeBlock = ({ children, className, ...props }: any) => {
+  const match = /language-(\w+)/.exec(className || '');
+  const language = match ? match[1] : '';
+  const code = String(children).replace(/\n$/, '');
+
+  return (
+    <div className="my-4 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+      <div className="bg-gray-800 text-gray-200 px-4 py-2 text-sm font-medium flex items-center justify-between">
+        <span>{language || 'code'}</span>
+        <button
+          onClick={() => navigator.clipboard.writeText(code)}
+          className="text-gray-400 hover:text-white transition-colors"
+          title="Copy code"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+        </button>
+      </div>
+      <div className="overflow-x-auto max-w-full">
+        <SyntaxHighlighter
+          style={tomorrow}
+          language={language}
+          PreTag="div"
+          customStyle={{
+            margin: 0,
+            borderRadius: 0,
+            fontSize: '14px',
+            lineHeight: '1.5',
+            padding: '16px',
+            backgroundColor: '#2d3748',
+            minWidth: '100%',
+            maxWidth: '100%',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word'
+          }}
+          {...props}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
+    </div>
+  );
+};
+
+const InlineCode = ({ children }: any) => (
+  <code className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-mono">
+    {children}
+  </code>
+);
+
+const FileNameCode = ({ children }: any) => (
+  <span className="font-bold text-gray-900 bg-gray-100 px-2 py-1 rounded text-sm border border-gray-300">
+    {children}
+  </span>
+);
+
+const CustomMarkdown = ({ content }: { content: string }) => {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        code: ({ node, inline, className, children, ...props }: any) => {
+          if (inline) {
+            // Check if it's a single line (likely a file name or short reference)
+            const codeText = String(children);
+            const lines = codeText.split('\n').filter(line => line.trim().length > 0);
+            
+            // Check if it looks like a file path or filename
+            const isFilePath = /^[a-zA-Z0-9\/\\_.-]+$/.test(codeText.trim()) && 
+                              (codeText.includes('.') || codeText.includes('/') || codeText.includes('\\'));
+            
+            if (lines.length === 1 && (codeText.length < 50 || isFilePath)) {
+              // Single line and short or looks like a file path - treat as file name
+              return <FileNameCode {...props}>{children}</FileNameCode>;
+            } else {
+              // Multi-line or long - treat as inline code
+              return <InlineCode {...props}>{children}</InlineCode>;
+            }
+          }
+          
+          // For block code, check if it's more than 2 lines
+          const codeText = String(children);
+          const lines = codeText.split('\n').filter(line => line.trim().length > 0);
+          
+          // Check if it looks like a list of files or short commands
+          const isFileList = lines.every(line => 
+            /^[a-zA-Z0-9\/\\_.-]+$/.test(line.trim()) && 
+            (line.includes('.') || line.includes('/') || line.includes('\\'))
+          );
+          
+          if (lines.length <= 2 && (isFileList || lines.every(line => line.length < 50))) {
+            // 2 lines or less and looks like files - treat as file names
+            return (
+              <span className="inline-flex flex-wrap gap-1">
+                {lines.map((line, index) => (
+                  <FileNameCode key={index}>{line}</FileNameCode>
+                ))}
+              </span>
+            );
+          } else {
+            // More than 2 lines or complex code - treat as code block
+            return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+          }
+        },
+        h1: ({ children }) => (
+          <h1 className="text-2xl font-bold text-gray-900 mb-4 mt-6 first:mt-0">
+            {children}
+          </h1>
+        ),
+        h2: ({ children }) => (
+          <h2 className="text-xl font-semibold text-gray-900 mb-3 mt-5">
+            {children}
+          </h2>
+        ),
+        h3: ({ children }) => (
+          <h3 className="text-lg font-medium text-gray-900 mb-2 mt-4">
+            {children}
+          </h3>
+        ),
+        p: ({ children }) => (
+          <p className="text-gray-700 mb-3 leading-relaxed">
+            {children}
+          </p>
+        ),
+        ul: ({ children }) => (
+          <ul className="list-disc list-inside text-gray-700 mb-3 space-y-1">
+            {children}
+          </ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="list-decimal list-inside text-gray-700 mb-3 space-y-1">
+            {children}
+          </ol>
+        ),
+        li: ({ children }) => (
+          <li className="text-gray-700">
+            {children}
+          </li>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-4 border-[#0070C0] pl-4 py-2 my-4 bg-blue-50 text-gray-700 italic">
+            {children}
+          </blockquote>
+        ),
+        a: ({ href, children }) => (
+          <a 
+            href={href} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-[#0070C0] hover:underline font-medium"
+          >
+            {children}
+          </a>
+        ),
+        strong: ({ children }) => (
+          <strong className="font-semibold text-gray-900">
+            {children}
+          </strong>
+        ),
+        em: ({ children }) => (
+          <em className="italic text-gray-700">
+            {children}
+          </em>
+        ),
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-4">
+            <table className="min-w-full border border-gray-300 rounded-lg">
+              {children}
+            </table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th className="bg-gray-100 border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="border border-gray-300 px-4 py-2 text-gray-700">
+            {children}
+          </td>
+        ),
+        hr: () => (
+          <hr className="my-6 border-gray-300" />
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+};
+
 export default function AIAssistantPage() {
   const router = useRouter();
   const params = useParams();
   const modelId = params.id as string;
+  
+  // Add custom styles for markdown content
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .markdown-content {
+        max-width: 100%;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+      }
+      
+      .markdown-content pre {
+        max-width: 100%;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      
+      .markdown-content code {
+        max-width: 100%;
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
+      
+      .markdown-content table {
+        max-width: 100%;
+        overflow-x: auto;
+        display: block;
+      }
+      
+      .markdown-content img {
+        max-width: 100%;
+        height: auto;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [model, setModel] = useState<Model | null>(null);
@@ -409,7 +646,7 @@ ${modelData.github_url || 'Not connected'}
                         }`}
                       >
                         {message.type === 'assistant' ? (
-                          <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-em:text-gray-700 prose-code:bg-gray-100 prose-code:text-gray-800 prose-pre:bg-gray-100 prose-pre:text-gray-800 prose-blockquote:border-l-[#0070C0] prose-a:text-[#0070C0] prose-a:no-underline hover:prose-a:underline">
+                          <div className="markdown-content">
                             {message.content === 'AI is thinking...' ? (
                               <div className="flex items-center space-x-2">
                                 <div className="flex space-x-1">
@@ -420,11 +657,7 @@ ${modelData.github_url || 'Not connected'}
                                 <span className="text-sm text-gray-500">AI is thinking...</span>
                               </div>
                             ) : (
-                              <ReactMarkdown 
-                                remarkPlugins={[remarkGfm]}
-                              >
-                                {message.content}
-                              </ReactMarkdown>
+                              <CustomMarkdown content={message.content} />
                             )}
                           </div>
                         ) : (

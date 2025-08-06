@@ -12,7 +12,8 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 
 # Configure Google Gemini
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY", "AIzaSyDJ93dDkl8gD7shJSvWY-fX1mvzp4bFABk"))
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.5-pro')
+
 
 # Session storage for GitHub code context
 # In production, use Redis or database for session management
@@ -91,6 +92,8 @@ Please analyze the code and provide a comprehensive response addressing the user
 2. Security vulnerabilities
 3. Performance considerations
 4. Specific recommendations based on the user's question
+5. Only give the code in the backtick markdown format. For filenames ,give them in the bold format.I want only the code in the backtick markdown format.
+6. Only answer to User's questions concisely. Don't give any other information.
 
 Provide detailed, actionable advice.
 """
