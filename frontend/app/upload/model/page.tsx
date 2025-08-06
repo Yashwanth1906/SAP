@@ -58,9 +58,7 @@ export default function ModelUploadPage() {
 
   const handleAnalyzeModel = async () => {
     setIsAnalyzing(true);
-    // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 3000));
-    // Hardcoded analysis results for demo
     setAnalysisResults({
       fairnessMetrics: {
         demographicParity: 0.04,
@@ -126,7 +124,7 @@ export default function ModelUploadPage() {
         </div>
       </nav>
 
-      {/* Main Content */}
+          
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Upload & Evaluate Model</h1>

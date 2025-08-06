@@ -10,20 +10,19 @@ import asyncio
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
-# Configure Google Gemini
+
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY", "AIzaSyDJ93dDkl8gD7shJSvWY-fX1mvzp4bFABk"))
 model = genai.GenerativeModel('gemini-2.5-pro')
 
 
-# Session storage for GitHub code context
-# In production, use Redis or database for session management
+
 session_contexts: Dict[str, Dict] = {}
 
 class ChatMessage(BaseModel):
     message: str
     model_id: Optional[int] = None
     github_url: Optional[str] = None
-    session_id: Optional[str] = None  # Add session ID for context tracking
+    session_id: Optional[str] = None  
 
 class ChatResponse(BaseModel):
     response: str
@@ -37,7 +36,7 @@ class GitHubCodeRequest(BaseModel):
     session_id: Optional[str] = None
 
 def get_session_context(session_id: str) -> Dict:
-    """Get or create session context"""
+   
     if session_id not in session_contexts:
         session_contexts[session_id] = {
             'github_code': None,
@@ -48,7 +47,7 @@ def get_session_context(session_id: str) -> Dict:
     return session_contexts[session_id]
 
 def update_session_context(session_id: str, github_code: str = None, files_fetched: List[str] = None, model_info: Dict = None):
-    """Update session context with new information"""
+   
     context = get_session_context(session_id)
     if github_code is not None:
         context['github_code'] = github_code
@@ -59,12 +58,12 @@ def update_session_context(session_id: str, github_code: str = None, files_fetch
 
 @router.post("/send", response_model=ChatResponse)
 async def send_message(chat_data: ChatMessage):
-    """Send a message to the AI assistant with optional GitHub code analysis"""
+   
     try:
         session_id = chat_data.session_id or "default"
         context = get_session_context(session_id)
         
-        # If github_url is provided, fetch and analyze code
+       
         github_code_content = context.get('github_code', "")
         files_fetched = context.get('files_fetched', [])
         
@@ -77,7 +76,7 @@ async def send_message(chat_data: ChatMessage):
                 files_fetched = list(files_content.keys())
                 update_session_context(session_id, github_code_content, files_fetched)
         
-        # Prepare the prompt for the LLM
+       
         if github_code_content:
             prompt = f"""
 You are an AI assistant helping with code analysis and security assessment. 
@@ -106,10 +105,10 @@ User Query: {chat_data.message}
 Please provide a helpful and informative response.
 """
         
-        # Generate response using Gemini
+       
         response = model.generate_content(prompt)
         
-        # Update conversation history
+       
         context['conversation_history'].append({
             'user': chat_data.message,
             'assistant': response.text
@@ -127,24 +126,23 @@ Please provide a helpful and informative response.
 
 @router.post("/analyze-model", response_model=ChatResponse)
 async def analyze_model_code(request: GitHubCodeRequest):
-    """Analyze a specific model's GitHub code based on user query"""
+   
     try:
         session_id = request.session_id or "default"
         context = get_session_context(session_id)
         
-        # Get model details from database
+       
         from controllers.model_controller import get_model_by_id
         
         model_details = get_model_by_id(request.model_id)
         if not model_details or not model_details.github_url:
             raise HTTPException(status_code=404, detail="Model not found or no GitHub URL available")
         
-        # Check if we already have GitHub code in session
+                                                                                                            
         github_code_content = context.get('github_code')
         files_fetched = context.get('files_fetched', [])
         
         if not github_code_content:
-            # Fetch GitHub code
             fetcher = GitHubFetcher()
             files_content = fetcher.fetch_repository_files(model_details.github_url)
             
@@ -154,14 +152,12 @@ async def analyze_model_code(request: GitHubCodeRequest):
             github_code_content = fetcher.format_for_llm(files_content)
             files_fetched = list(files_content.keys())
             
-            # Store in session context
             update_session_context(session_id, github_code_content, files_fetched, {
                 'name': model_details.name,
                 'type': model_details.type,
                 'description': model_details.description
             })
-        
-        # Prepare prompt for analysis
+   
         prompt = f"""
 You are an AI assistant specializing in AI model analysis and security assessment.
 
@@ -185,10 +181,9 @@ Please provide a comprehensive analysis addressing the user's specific question 
 Provide specific, actionable insights based on the code analysis.
 """
         
-        # Generate response using Gemini
         response = model.generate_content(prompt)
         
-        # Update conversation history
+        
         context['conversation_history'].append({
             'user': request.user_query,
             'assistant': response.text
@@ -206,7 +201,7 @@ Provide specific, actionable insights based on the code analysis.
 
 @router.get("/models/{model_id}/github-url")
 async def get_model_github_url(model_id: int):
-    """Get the GitHub URL for a specific model"""
+   
     try:
         from controllers.model_controller import get_model_by_id
         
@@ -221,14 +216,14 @@ async def get_model_github_url(model_id: int):
 
 @router.post("/clear-session/{session_id}")
 async def clear_session_context(session_id: str):
-    """Clear session context"""
+   
     if session_id in session_contexts:
         del session_contexts[session_id]
     return {"message": "Session context cleared"}
 
 @router.get("/session/{session_id}/context")
 async def get_session_context_endpoint(session_id: str):
-    """Get session context"""
+   
     context = get_session_context(session_id)
     return {
         "has_github_code": context.get('github_code') is not None,
@@ -236,16 +231,16 @@ async def get_session_context_endpoint(session_id: str):
         "model_info": context.get('model_info')
     }
 
-# Streaming endpoints
+
 @router.post("/send-stream")
 async def send_message_stream(chat_data: ChatMessage):
-    """Send a message to the AI assistant with streaming response"""
+   
     async def generate_stream():
         try:
             session_id = chat_data.session_id or "default"
             context = get_session_context(session_id)
             
-            # If github_url is provided, fetch and analyze code
+           
             github_code_content = context.get('github_code', "")
             files_fetched = context.get('files_fetched', [])
             
@@ -258,7 +253,7 @@ async def send_message_stream(chat_data: ChatMessage):
                     files_fetched = list(files_content.keys())
                     update_session_context(session_id, github_code_content, files_fetched)
             
-            # Prepare the prompt for the LLM
+           
             if github_code_content:
                 prompt = f"""
 You are an AI assistant helping with code analysis and security assessment. 
@@ -285,13 +280,13 @@ User Query: {chat_data.message}
 Please provide a helpful and informative response.
 """
             
-            # Generate streaming response
+           
             response = model.generate_content(prompt, stream=True)
             
             for chunk in response:
                 if chunk.text:
                     yield f"data: {json.dumps({'chunk': chunk.text})}\n\n"
-                    await asyncio.sleep(0.01)  # Small delay for smooth streaming
+                    await asyncio.sleep(0.01)  
             
             yield "data: [DONE]\n\n"
             
@@ -312,13 +307,13 @@ Please provide a helpful and informative response.
 
 @router.post("/analyze-model-stream")
 async def analyze_model_code_stream(request: GitHubCodeRequest):
-    """Analyze model code with streaming response"""
+   
     async def generate_stream():
         try:
             session_id = request.session_id or "default"
             context = get_session_context(session_id)
             
-            # Get model information from database
+           
             from db.connection import db_manager
             with db_manager.get_cursor() as cursor:
                 cursor.execute("SELECT * FROM MODELS WHERE ID = ?", (request.model_id,))
@@ -329,14 +324,14 @@ async def analyze_model_code_stream(request: GitHubCodeRequest):
                 yield "data: [DONE]\n\n"
                 return
             
-            # Get GitHub URL from model
-            github_url = model_info[5]  # Assuming github_url is at index 5
+           
+            github_url = model_info[5]  
             if not github_url:
                 yield f"data: {json.dumps({'chunk': 'No GitHub URL associated with this model.'})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
             
-            # Fetch GitHub code
+
             fetcher = GitHubFetcher()
             files_content = fetcher.fetch_repository_files(github_url)
             
@@ -345,7 +340,7 @@ async def analyze_model_code_stream(request: GitHubCodeRequest):
                 yield "data: [DONE]\n\n"
                 return
             
-            # Format code for LLM
+           
             github_code_content = fetcher.format_for_llm(files_content)
             files_fetched = list(files_content.keys())
             update_session_context(session_id, github_code_content, files_fetched, {
@@ -355,7 +350,7 @@ async def analyze_model_code_stream(request: GitHubCodeRequest):
                 'description': model_info[4]
             })
             
-            # Prepare prompt
+           
             prompt = f"""
 You are an AI assistant analyzing a machine learning model's code repository.
 
@@ -381,13 +376,13 @@ Please analyze the code and provide insights about:
 Provide detailed, actionable advice with code examples when relevant.
 """
             
-            # Generate streaming response
+           
             response = model.generate_content(prompt, stream=True)
             
             for chunk in response:
                 if chunk.text:
                     yield f"data: {json.dumps({'chunk': chunk.text})}\n\n"
-                    await asyncio.sleep(0.01)  # Small delay for smooth streaming
+                    await asyncio.sleep(0.01)  
             
             yield "data: [DONE]\n\n"
             

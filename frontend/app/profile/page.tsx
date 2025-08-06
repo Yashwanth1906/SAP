@@ -72,24 +72,23 @@ export default function ProfilePage() {
         setLogoPreview(ev.target?.result as string);
       };
       reader.readAsDataURL(file);
-      // In real app, upload to server here
+      
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate API call
+    
     await new Promise((r) => setTimeout(r, 1500));
     setEditing(false);
     setSaving(false);
-    // API call example (commented):
-    // await fetch('/api/company-profile', { method: 'POST', body: JSON.stringify(profile) });
+                                    
   };
 
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50">
-        {/* Navigation */}
+        
         <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -111,14 +110,14 @@ export default function ProfilePage() {
         </div>
       </nav>
 
-      {/* Main Content */}
+      
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Company Profile</h1>
           <p className="text-gray-600">Manage your company information, admin contact, and diversity goals.</p>
         </motion.div>
 
-        {/* Company Info Card */}
+        
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex items-center gap-6 mb-6">
             <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -170,7 +169,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Admin Contact Card */}
+        
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Admin Contact</h2>
           <div className="grid md:grid-cols-2 gap-4">
@@ -201,7 +200,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Diversity Goals Card */}
+        
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Diversity Goals</h2>
           <div className="grid md:grid-cols-3 gap-4">
@@ -229,7 +228,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Security Card */}
+        
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Security</h2>
           <div className="flex flex-col gap-2">
@@ -242,7 +241,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
+
         <div className="flex gap-4 justify-end">
           {editing ? (
             <>

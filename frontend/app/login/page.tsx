@@ -26,7 +26,6 @@ export default function LoginPage() {
         password,
       });
 
-      // Store user data in localStorage
       auth.login({
         id: data.id,
         name: data.name,
@@ -34,14 +33,12 @@ export default function LoginPage() {
         is_premium: data.is_premium || false,
       });
       
-      // Show success message with premium status
       if (data.is_premium) {
         setSuccess("Welcome back! You're signed in with Premium access.");
       } else {
         setSuccess("Welcome back! You're signed in with Basic access.");
       }
-      
-      // Redirect to dashboard after a short delay
+                    
       setTimeout(() => {
         router.push("/dashboard");
       }, 1500);

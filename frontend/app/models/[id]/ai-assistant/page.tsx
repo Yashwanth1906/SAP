@@ -42,7 +42,7 @@ interface Message {
   timestamp: Date;
 }
 
-// Custom components for markdown rendering
+
 const CodeBlock = ({ children, className, ...props }: any) => {
   const match = /language-(\w+)/.exec(className || '');
   const language = match ? match[1] : '';
@@ -108,35 +108,28 @@ const CustomMarkdown = ({ content }: { content: string }) => {
       components={{
         code: ({ node, inline, className, children, ...props }: any) => {
           if (inline) {
-            // Check if it's a single line (likely a file name or short reference)
             const codeText = String(children);
             const lines = codeText.split('\n').filter(line => line.trim().length > 0);
             
-            // Check if it looks like a file path or filename
             const isFilePath = /^[a-zA-Z0-9\/\\_.-]+$/.test(codeText.trim()) && 
                               (codeText.includes('.') || codeText.includes('/') || codeText.includes('\\'));
             
             if (lines.length === 1 && (codeText.length < 50 || isFilePath)) {
-              // Single line and short or looks like a file path - treat as file name
               return <FileNameCode {...props}>{children}</FileNameCode>;
             } else {
-              // Multi-line or long - treat as inline code
               return <InlineCode {...props}>{children}</InlineCode>;
             }
           }
           
-          // For block code, check if it's more than 2 lines
           const codeText = String(children);
           const lines = codeText.split('\n').filter(line => line.trim().length > 0);
           
-          // Check if it looks like a list of files or short commands
           const isFileList = lines.every(line => 
             /^[a-zA-Z0-9\/\\_.-]+$/.test(line.trim()) && 
             (line.includes('.') || line.includes('/') || line.includes('\\'))
           );
           
           if (lines.length <= 2 && (isFileList || lines.every(line => line.length < 50))) {
-            // 2 lines or less and looks like files - treat as file names
             return (
               <span className="inline-flex flex-wrap gap-1">
                 {lines.map((line, index) => (
@@ -145,7 +138,6 @@ const CustomMarkdown = ({ content }: { content: string }) => {
               </span>
             );
           } else {
-            // More than 2 lines or complex code - treat as code block
             return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
           }
         },
@@ -241,7 +233,6 @@ export default function AIAssistantPage() {
   const params = useParams();
   const modelId = params.id as string;
   
-  // Add custom styles for markdown content
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -299,7 +290,6 @@ export default function AIAssistantPage() {
     const user = auth.getCurrentUser();
     setCurrentUser(user);
     
-    // Generate unique session ID for this chat
     const newSessionId = `model_${modelId}_${Date.now()}`;
     setSessionId(newSessionId);
     
@@ -312,12 +302,11 @@ export default function AIAssistantPage() {
     scrollToBottom();
   }, [messages]);
 
-  // Add a separate effect for smooth scrolling during streaming
   useEffect(() => {
     if (isTyping) {
       const interval = setInterval(() => {
         scrollToBottom();
-      }, 100); // Scroll every 100ms during typing
+      }, 100); 
       return () => clearInterval(interval);
     }
   }, [isTyping]);
@@ -333,7 +322,7 @@ export default function AIAssistantPage() {
       setModel(modelData);
       setVersions(modelData.versions || []);
       
-      // Initialize with welcome message and context
+
       initializeChat(modelData, modelData.versions || []);
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail;
@@ -356,7 +345,7 @@ export default function AIAssistantPage() {
   };
 
   const initializeChat = (modelData: Model, versions: Version[]) => {
-    const currentVersion = versions[0]; // Get the latest version
+    const currentVersion = versions[0]; 
     const biasContext = currentVersion?.report ? 
       `Current bias analysis shows: ${currentVersion.report.intentional_bias || 'No bias detected'}. Fairness score: ${currentVersion.report.fairness_score || 'N/A'}.` : 
       'No bias analysis available yet.';
@@ -405,7 +394,6 @@ ${modelData.github_url || 'Not connected'}
     setInputMessage("");
     setIsTyping(true);
 
-    // Create a placeholder message for the assistant response with initial "thinking" content
     const assistantMessageId = (Date.now() + 1).toString();
     const assistantMessage: Message = {
       id: assistantMessageId,
@@ -417,19 +405,18 @@ ${modelData.github_url || 'Not connected'}
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      // Check if the message is about GitHub or code analysis
       const messageLower = inputMessage.toLowerCase();
       let response;
       
       if (messageLower.includes('github') || messageLower.includes('repo') || messageLower.includes('connect') || 
           messageLower.includes('pull') || messageLower.includes('fetch') || messageLower.includes('code')) {
-        // Use the streaming analyze-model endpoint for GitHub-related queries
+                                          
         await apiService.analyzeModelCodeStream({
           model_id: parseInt(modelId),
           user_query: inputMessage,
           session_id: sessionId
         }, (chunk: string) => {
-          // Update the assistant message with the streaming content
+          
           setMessages(prev => prev.map(msg => 
             msg.id === assistantMessageId 
               ? { ...msg, content: msg.content === 'AI is thinking...' ? chunk : msg.content + chunk }
@@ -437,13 +424,13 @@ ${modelData.github_url || 'Not connected'}
           ));
         });
       } else {
-        // Use the streaming chat endpoint
+        
         await apiService.sendChatMessageStream({
           message: inputMessage,
           model_id: parseInt(modelId),
           session_id: sessionId
         }, (chunk: string) => {
-          // Update the assistant message with the streaming content
+          
           setMessages(prev => prev.map(msg => 
             msg.id === assistantMessageId 
               ? { ...msg, content: msg.content === 'AI is thinking...' ? chunk : msg.content + chunk }
@@ -452,14 +439,13 @@ ${modelData.github_url || 'Not connected'}
         });
       }
       
-      // Check if GitHub context was added (this would need to be handled differently with streaming)
-      // For now, we'll keep the existing logic but it might need adjustment
+      
       if (messageLower.includes('github') || messageLower.includes('repo') || messageLower.includes('connect')) {
         setHasGitHubContext(true);
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
-      // Update the assistant message with error content
+      
       setMessages(prev => prev.map(msg => 
         msg.id === assistantMessageId 
           ? { ...msg, content: `Sorry, I encountered an error: ${error.response?.data?.detail || 'Please try again later.'}` }
@@ -521,9 +507,9 @@ ${modelData.github_url || 'Not connected'}
   return (
     <AuthGuard>
       <div className="flex h-screen bg-gray-50">
-        {/* Sidebar */}
+        
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          {/* Header */}
+          
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 bg-[#0070C0] rounded-lg flex items-center justify-center">
@@ -554,7 +540,7 @@ ${modelData.github_url || 'Not connected'}
             </div>
           </div>
 
-          {/* Quick Actions */}
+          
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Actions</h3>
             <div className="space-y-2">
@@ -585,7 +571,7 @@ ${modelData.github_url || 'Not connected'}
             </div>
           </div>
 
-          {/* Navigation */}
+          
           <div className="flex-1 p-4">
             <button
               onClick={() => router.push(`/models/${model.id}`)}
@@ -596,9 +582,9 @@ ${modelData.github_url || 'Not connected'}
           </div>
         </div>
 
-        {/* Main Chat Area */}
+        
         <div className="flex-1 flex flex-col">
-          {/* Chat Header */}
+          
           <div className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div>
@@ -618,7 +604,7 @@ ${modelData.github_url || 'Not connected'}
             </div>
           </div>
 
-          {/* Messages */}
+          
           <div className="flex-1 overflow-y-auto bg-gray-50">
             <div className="px-4 py-6 space-y-6">
               <AnimatePresence>
@@ -685,7 +671,7 @@ ${modelData.github_url || 'Not connected'}
             </div>
           </div>
 
-          {/* Input Area */}
+                            
           <div className="bg-white border-t border-gray-200 px-6 py-4">
             <div className="flex items-end space-x-4">
               <div className="flex-1">

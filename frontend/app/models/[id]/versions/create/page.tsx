@@ -86,13 +86,11 @@ export default function CreateVersionPage() {
     if (file) {
       setDatasetFile(file);
       
-      // Parse CSV headers if it's a CSV file
       if (file.name.toLowerCase().endsWith('.csv')) {
         try {
           const headers = await parseCSVHeaders(file);
           setCsvHeaders(headers);
           
-          // Initialize selection criteria fields
           const initialSelectionFields = headers.map(header => ({
             feature: header,
             value: ""
@@ -105,14 +103,12 @@ export default function CreateVersionPage() {
           }));
           setIntentionalBiasFeatures(initialBiasFeatures);
           
-          // Show criteria sections after dataset upload
           setShowCriteriaSections(true);
         } catch (error) {
           setError('Failed to parse CSV file. Please ensure it\'s a valid CSV file.');
           console.error('Error parsing CSV:', error);
         }
       } else {
-        // For non-CSV files, clear the parsed data
         setCsvHeaders([]);
         setSelectionCriteriaFields([]);
         setIntentionalBiasFeatures([]);
@@ -167,7 +163,6 @@ export default function CreateVersionPage() {
         return;
       }
 
-      // Convert selection criteria fields to JSON format
       const selectionCriteriaData: { [key: string]: string } = {};
       selectionCriteriaFields.forEach(field => {
         if (field.value.trim()) {
@@ -175,7 +170,6 @@ export default function CreateVersionPage() {
         }
       });
 
-      // Get selected intentional bias features
       const selectedBiasFeatures = intentionalBiasFeatures
         .filter(feature => feature.isSelected)
         .map(feature => feature.feature);
@@ -191,7 +185,6 @@ export default function CreateVersionPage() {
       
       setSuccess("Model certification completed successfully!");
       
-      // Redirect to model page after 2 seconds
       setTimeout(() => {
         router.push(`/models/${modelId}`);
       }, 2000);
@@ -314,7 +307,6 @@ export default function CreateVersionPage() {
                   )}
                 </div>
 
-                {/* Dataset Upload Section */}
                 {!datasetFile ? (
                   <div>
                     <label htmlFor="datasetFile" className="block text-sm font-medium text-gray-700 mb-2">
@@ -374,7 +366,6 @@ export default function CreateVersionPage() {
                   </div>
                 )}
 
-                {/* Selection Criteria Section - Only show after dataset upload */}
                 {showCriteriaSections && csvHeaders.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -419,7 +410,6 @@ export default function CreateVersionPage() {
                   </div>
                 )}
 
-                {/* Intentional Bias Features Section - Only show after dataset upload */}
                 {showCriteriaSections && csvHeaders.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -454,8 +444,7 @@ export default function CreateVersionPage() {
                     </p>
                   </div>
                 )}
-
-                {/* Fallback text areas for non-CSV files - Only show after dataset upload */}
+          
                 {showCriteriaSections && csvHeaders.length === 0 && (
                   <>
                     <div>

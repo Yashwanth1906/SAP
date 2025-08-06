@@ -29,14 +29,12 @@ export default function RegisterPage() {
     setError("");
     setSuccess("");
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
       return;
     }
 
-    // Validate password strength
     if (password.length < 6) {
       setError("Password must be at least 6 characters long");
       setIsLoading(false);
@@ -56,7 +54,6 @@ export default function RegisterPage() {
         registration_number: registrationNumber
       });
 
-      // Store user data in localStorage
       auth.login({
         id: data.id,
         name: data.name,
@@ -65,8 +62,7 @@ export default function RegisterPage() {
       });
 
       setSuccess("Organization registered successfully! Redirecting to dashboard...");
-      
-      // Redirect to dashboard after 2 seconds
+                                                                        
       setTimeout(() => {
         router.push("/dashboard");
       }, 2000);

@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Razorpay
+
 client = razorpay.Client(auth=(os.getenv("RAZORPAY_KEY_ID"), os.getenv("RAZORPAY_KEY_SECRET")))
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
@@ -38,9 +38,9 @@ class CreateSubscriptionRequest(BaseModel):
 
 @router.post("/create-order")
 async def create_order(request: CreateOrderRequest):
-    """Create a Razorpay order for one-time payment"""
+   
     try:
-        # Get organization details
+       
         with db_manager.get_cursor() as cursor:
             cursor.execute("SELECT EMAIL, NAME FROM ORGANIZATIONS WHERE ID = ?", (request.organizationId,))
             org = cursor.fetchone()
@@ -50,9 +50,9 @@ async def create_order(request: CreateOrderRequest):
             
             email, name = org
 
-        # Create Razorpay order
+        
         order_data = {
-            "amount": int(request.price * 100),  # Convert to paise
+            "amount": int(request.price * 100),  
             "currency": "INR",
             "receipt": f"order_{request.organizationId}_{request.planId}",
             "notes": {
@@ -77,9 +77,9 @@ async def create_order(request: CreateOrderRequest):
 
 @router.post("/create-subscription")
 async def create_subscription(request: CreateSubscriptionRequest):
-    """Create a Razorpay subscription for recurring payments"""
+   
     try:
-        # Get organization details
+       
         with db_manager.get_cursor() as cursor:
             cursor.execute("SELECT EMAIL, NAME FROM ORGANIZATIONS WHERE ID = ?", (request.organizationId,))
             org = cursor.fetchone()
@@ -89,11 +89,11 @@ async def create_subscription(request: CreateSubscriptionRequest):
             
             email, name = org
 
-        # Create customer if not exists
+        
         customer_data = {
             "name": name,
             "email": email,
-            "contact": "9999999999"  # Default contact
+            "contact": "9999999999"  
         }
         
         customers = client.customer.all()
@@ -107,7 +107,7 @@ async def create_subscription(request: CreateSubscriptionRequest):
         if not customer:
             customer = client.customer.create(data=customer_data)
 
-        # Create plan
+        
         plan_data = {
             "period": "monthly",
             "interval": 1,
@@ -121,11 +121,11 @@ async def create_subscription(request: CreateSubscriptionRequest):
         
         plan = client.plan.create(data=plan_data)
 
-        # Create subscription
+        
         subscription_data = {
             "plan_id": plan["id"],
             "customer_notify": 1,
-            "total_count": 12,  # 12 months
+            "total_count": 12,  
             "notes": {
                 "organization_id": str(request.organizationId),
                 "plan_id": request.planId,
@@ -135,7 +135,7 @@ async def create_subscription(request: CreateSubscriptionRequest):
         
         subscription = client.subscription.create(data=subscription_data)
         
-        # Update organization with Razorpay customer ID
+        
         with db_manager.get_cursor() as cursor:
             cursor.execute("""
                 UPDATE ORGANIZATIONS 
@@ -157,9 +157,9 @@ async def create_subscription(request: CreateSubscriptionRequest):
 
 @router.post("/verify-payment")
 async def verify_payment(request: VerifyPaymentRequest):
-    """Verify Razorpay payment signature and update premium status"""
+   
     try:
-        # Verify payment signature
+       
         text = f"{request.razorpay_order_id}|{request.razorpay_payment_id}"
         signature = hmac.new(
             os.getenv("RAZORPAY_KEY_SECRET").encode(),
@@ -170,13 +170,13 @@ async def verify_payment(request: VerifyPaymentRequest):
         if signature != request.razorpay_signature:
             raise HTTPException(status_code=400, detail="Invalid payment signature")
 
-        # Get payment details
+        
         payment = client.payment.fetch(request.razorpay_payment_id)
         
         if payment["status"] != "captured":
             raise HTTPException(status_code=400, detail="Payment not captured")
 
-        # Update organization to premium
+        
         with db_manager.get_cursor() as cursor:
             cursor.execute("""
                 UPDATE ORGANIZATIONS 
@@ -196,7 +196,7 @@ async def verify_payment(request: VerifyPaymentRequest):
 
 @router.post("/webhook")
 async def razorpay_webhook(request: Request):
-    """Handle Razorpay webhooks for subscription events"""
+
     try:
         body = await request.body()
         signature = request.headers.get('x-razorpay-signature')
@@ -204,7 +204,7 @@ async def razorpay_webhook(request: Request):
         if not signature:
             raise HTTPException(status_code=400, detail="Missing signature")
 
-        # Verify webhook signature
+        
         expected_signature = hmac.new(
             os.getenv("RAZORPAY_WEBHOOK_SECRET").encode(),
             body,
@@ -214,7 +214,7 @@ async def razorpay_webhook(request: Request):
         if not hmac.compare_digest(expected_signature, signature):
             raise HTTPException(status_code=400, detail="Invalid signature")
 
-        # Parse webhook data
+        
         webhook_data = json.loads(body)
         event = webhook_data.get("event")
         payload = webhook_data.get("payload", {})
@@ -240,7 +240,7 @@ async def razorpay_webhook(request: Request):
         raise HTTPException(status_code=500, detail=f"Webhook error: {str(e)}")
 
 async def handle_subscription_activated(payload):
-    """Handle subscription activation"""
+    
     try:
         subscription = payload.get("subscription", {})
         notes = subscription.get("notes", {})
@@ -260,7 +260,7 @@ async def handle_subscription_activated(payload):
         print(f"Error handling subscription activated: {str(e)}")
 
 async def handle_subscription_charged(payload):
-    """Handle successful subscription charge"""
+    
     try:
         subscription = payload.get("subscription", {})
         notes = subscription.get("notes", {})
@@ -280,7 +280,7 @@ async def handle_subscription_charged(payload):
         print(f"Error handling subscription charged: {str(e)}")
 
 async def handle_subscription_halted(payload):
-    """Handle subscription halt"""
+    
     try:
         subscription = payload.get("subscription", {})
         notes = subscription.get("notes", {})
@@ -300,7 +300,7 @@ async def handle_subscription_halted(payload):
         print(f"Error handling subscription halted: {str(e)}")
 
 async def handle_subscription_cancelled(payload):
-    """Handle subscription cancellation"""
+    
     try:
         subscription = payload.get("subscription", {})
         notes = subscription.get("notes", {})
@@ -320,7 +320,7 @@ async def handle_subscription_cancelled(payload):
         print(f"Error handling subscription cancelled: {str(e)}")
 
 async def handle_payment_captured(payload):
-    """Handle successful payment capture"""
+    
     try:
         payment = payload.get("payment", {})
         entity = payment.get("entity", {})
@@ -341,7 +341,7 @@ async def handle_payment_captured(payload):
         print(f"Error handling payment captured: {str(e)}")
 
 async def handle_payment_failed(payload):
-    """Handle failed payment"""
+    
     try:
         payment = payload.get("payment", {})
         entity = payment.get("entity", {})
@@ -363,7 +363,7 @@ async def handle_payment_failed(payload):
 
 @router.get("/subscription/{organization_id}")
 async def get_subscription_status(organization_id: int):
-    """Get subscription status for an organization"""
+
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("""

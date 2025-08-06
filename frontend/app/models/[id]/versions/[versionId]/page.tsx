@@ -61,7 +61,6 @@ export default function VersionDetailsPage() {
       const modelData = await apiService.getModelVersions(parseInt(modelId));
       setModel(modelData);
       
-      // Find the specific version
       const foundVersion = modelData.versions?.find((v: Version) => v.id === parseInt(versionId));
       if (foundVersion) {
         setVersion(foundVersion);
@@ -99,7 +98,6 @@ export default function VersionDetailsPage() {
     try {
       setIsPublishing(true);
       await apiService.publishVersion(parseInt(versionId));
-      // Show success message or redirect
       alert('Version published successfully!');
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail;
@@ -146,7 +144,6 @@ export default function VersionDetailsPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50">
-        {/* Navigation */}
         <nav className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -171,14 +168,12 @@ export default function VersionDetailsPage() {
           </div>
         </nav>
 
-        {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            {/* Model Information Header */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -273,7 +268,6 @@ export default function VersionDetailsPage() {
               </div>
             </div>
 
-            {/* Version Details */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Version Details</h2>
               <div className="grid md:grid-cols-2 gap-6">
@@ -315,7 +309,6 @@ export default function VersionDetailsPage() {
               </div>
             </div>
 
-            {/* Report Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Bias Analysis Report</h2>
               {version.report ? (
@@ -372,7 +365,6 @@ export default function VersionDetailsPage() {
               )}
             </div>
 
-            {/* Certification Section */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Certification Details</h2>
               {version.certification_type ? (
@@ -400,8 +392,7 @@ export default function VersionDetailsPage() {
                       </p>
                     </div>
                   </div>
-                  
-                  {/* Certificate Template */}
+                            
                   <div className="mt-6">
                     <CertificateTemplate
                       organizationName={currentUser?.name || 'Unknown Organization'}

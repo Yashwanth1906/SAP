@@ -9,17 +9,17 @@ router = APIRouter(prefix="/organizations", tags=["Organizations"])
 
 @router.post("/register", response_model=OrganizationResponse)
 def register_organization(org_data: OrganizationCreate):
-    """Register a new organization"""
+    
     return create_organization(org_data)
 
 @router.post("/login", response_model=OrganizationResponse)
 def login_organization_endpoint(login_data: OrganizationLogin):
-    """Login organization"""
+    
     return login_organization(login_data)
 
 @router.get("/", response_model=List[dict])
 def get_all_organizations():
-    """Get all organizations for public viewing"""
+    
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("""
@@ -30,7 +30,7 @@ def get_all_organizations():
             
             organizations = []
             for row in cursor.fetchall():
-                # Get city and country from separate columns
+                
                 city = row[2] or ""
                 country = row[3] or ""
                 
@@ -49,7 +49,7 @@ def get_all_organizations():
 
 @router.get("/{organization_id}", response_model=dict)
 def get_organization(organization_id: int):
-    """Get specific organization details"""
+    
     try:
         with db_manager.get_cursor() as cursor:
             cursor.execute("""
@@ -62,7 +62,7 @@ def get_organization(organization_id: int):
             if not row:
                 raise HTTPException(status_code=404, detail="Organization not found")
             
-            # Get city and country from separate columns
+                                                            
             city = row[2] or ""
             country = row[3] or ""
             

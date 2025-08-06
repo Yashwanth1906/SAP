@@ -7,7 +7,6 @@ import { auth } from "@/lib/auth";
 import { apiService } from "@/lib/api";
 import AuthGuard from "@/components/AuthGuard";
 
-// Initialize Razorpay
 declare global {
   interface Window {
     Razorpay: any;
@@ -73,8 +72,7 @@ export default function UpgradePage() {
     if (user.is_premium) {
       router.push("/dashboard");
     }
-
-    // Load Razorpay script
+            
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
@@ -100,7 +98,6 @@ export default function UpgradePage() {
     setError("");
 
     try {
-      // Create order
       const orderResponse = await apiService.createOrder({
         planId: selectedPlan.id,
         organizationId: currentUser.id,
@@ -108,7 +105,6 @@ export default function UpgradePage() {
         price: selectedPlan.price
       });
 
-      // Initialize Razorpay
       const options = {
         key: orderResponse.keyId,
         amount: orderResponse.amount,
@@ -118,7 +114,6 @@ export default function UpgradePage() {
         order_id: orderResponse.orderId,
         handler: async function (response: any) {
           try {
-            // Verify payment
             await apiService.verifyPayment({
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id,
@@ -128,13 +123,11 @@ export default function UpgradePage() {
               planName: selectedPlan.name
             });
 
-            // Update user's premium status
             auth.login({
               ...currentUser,
               is_premium: true,
             });
 
-            // Redirect to dashboard with success
             router.push('/dashboard?success=true');
           } catch (error: any) {
             const errorMessage = error.response?.data?.detail;

@@ -61,7 +61,6 @@ export default function UploadPage() {
     }
   }, []);
 
-  // Hardcoded sample data for demo
   const sampleSensitiveAttributes: SensitiveAttribute[] = [
     {
       name: "gender",
@@ -92,7 +91,6 @@ export default function UploadPage() {
     const file = event.target.files?.[0];
     if (file) {
       setUploadedFile(file);
-      // Auto-populate sensitive attributes for demo
       setSensitiveAttributes(sampleSensitiveAttributes);
     }
   };
@@ -100,10 +98,8 @@ export default function UploadPage() {
   const handleAnalyzeDataset = async () => {
     setIsAnalyzing(true);
     
-    // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Hardcoded analysis results for demo
     const mockResults: DatasetAnalysis = {
       totalRecords: 15420,
       qualifiedRecords: 8234,
@@ -177,8 +173,6 @@ export default function UploadPage() {
     setIsAnalyzing(false);
   };
 
-  // API endpoint (commented for now)
-  /*
   const analyzeDatasetAPI = async (file: File, attributes: SensitiveAttribute[]) => {
     const formData = new FormData();
     formData.append('dataset', file);
@@ -191,12 +185,10 @@ export default function UploadPage() {
     
     return response.json();
   };
-  */
-
+              
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -219,9 +211,7 @@ export default function UploadPage() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -235,7 +225,6 @@ export default function UploadPage() {
           </p>
         </motion.div>
 
-        {/* Tab Navigation */}
         <div className="mb-8">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
@@ -272,7 +261,6 @@ export default function UploadPage() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-8"
             >
-              {/* File Upload Section */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   Upload Dataset
@@ -321,7 +309,6 @@ export default function UploadPage() {
                 </div>
               </div>
 
-              {/* Sensitive Attributes Section */}
               {uploadedFile && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -360,7 +347,6 @@ export default function UploadPage() {
                 </motion.div>
               )}
 
-              {/* Analysis Button */}
               {uploadedFile && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -387,14 +373,12 @@ export default function UploadPage() {
                 </motion.div>
               )}
 
-              {/* Analysis Results */}
               {analysisComplete && analysisResults && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-6"
                 >
-                  {/* Dataset Overview */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">
                       Dataset Overview
@@ -419,7 +403,6 @@ export default function UploadPage() {
                     </div>
                   </div>
 
-                  {/* Bias Indicators */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">
                       Bias Indicators
@@ -462,7 +445,6 @@ export default function UploadPage() {
                     </div>
                   </div>
 
-                  {/* Group Analysis */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">
                       Group Analysis
@@ -495,7 +477,6 @@ export default function UploadPage() {
                     </div>
                   </div>
 
-                  {/* Recommendations */}
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">
                       Recommendations
