@@ -1,0 +1,101 @@
+Name,Gender,Age,Education,Experience_Years,Skills,Selected
+Frank0,Male,33,MBA,4,"Linux, Agile, Excel, Python",1
+Frank1,Male,27,B.Tech,6,"Project Mgmt, Python, Tableau, Excel",1
+Alice2,Female,30,B.Sc,9,"Tableau, AWS, Python",0
+Isha3,Female,26,MBA,7,"Python, Tableau",0
+David4,Female,26,PhD,0,"Linux, Java, R, Agile",0
+Bob5,Female,29,Diploma,4,"DevOps, Machine Learning, Linux, AWS",1
+David6,Male,30,M.Tech,6,"Marketing, Excel",1
+Clara7,Female,26,MBA,5,"Machine Learning, Python, Project Mgmt, DevOps",1
+Jack8,Male,35,M.Tech,7,"AWS, Data Science, Agile, Excel",1
+Grace9,Male,27,M.Tech,3,"Linux, R, Project Mgmt, Python",1
+Henry10,Male,28,Diploma,10,"AWS, Python",0
+Jack11,Male,35,B.Tech,7,"Excel, AWS",0
+Clara12,Male,35,Diploma,2,"AWS, Agile",1
+Frank13,Male,32,B.Tech,5,"Project Mgmt, Excel, Linux, Data Science",1
+Henry14,Female,31,B.Tech,3,"Tableau, Machine Learning, R, Java",0
+Bob15,Female,29,M.Tech,4,"Python, Data Science",1
+Eva16,Male,27,MBA,2,"Excel, Linux",1
+Clara17,Female,24,B.Tech,9,"Marketing, Tableau, R",0
+Jack18,Female,25,MBA,10,"AWS, Machine Learning, Tableau",0
+Henry19,Male,32,PhD,2,"AWS, Data Science",1
+Eva20,Male,33,B.Sc,7,"R, Linux, AWS",0
+Grace21,Male,31,B.Sc,4,"Project Mgmt, Tableau",1
+Alice22,Female,31,Diploma,7,"Agile, Project Mgmt, R",0
+Frank23,Female,32,M.Tech,9,"Tableau, Agile, DevOps",1
+Clara24,Female,32,Diploma,0,"Agile, AWS, Python",0
+Clara25,Female,26,B.Sc,6,"R, SQL",1
+Frank26,Male,35,M.Tech,4,"Agile, Machine Learning, DevOps",1
+Bob27,Male,23,M.Tech,3,"DevOps, Tableau, Linux, Excel",1
+Grace28,Female,26,PhD,1,"Data Science, Tableau, DevOps",0
+Jack29,Male,35,Diploma,5,"Tableau, R",1
+Jack30,Male,31,M.Tech,10,"Tableau, AWS",1
+Eva31,Male,23,M.Tech,0,"Machine Learning, AWS",0
+David32,Female,28,MBA,5,"DevOps, Project Mgmt, Excel, Linux",0
+Clara33,Male,32,B.Tech,7,"Linux, Machine Learning, Python, Data Science",0
+Henry34,Female,35,B.Sc,1,"Data Science, Excel, Tableau, Project Mgmt",0
+Eva35,Female,23,MBA,1,"R, Tableau, Agile, Marketing",1
+Alice36,Male,25,M.Tech,9,"Java, Agile",1
+Jack37,Female,35,M.Tech,5,"Agile, Marketing",0
+Clara38,Female,30,B.Sc,2,"Tableau, Python",0
+Frank39,Female,31,B.Sc,0,"Machine Learning, Python",0
+Grace40,Female,33,B.Tech,7,"Agile, Data Science, Excel",0
+Henry41,Female,31,B.Tech,10,"Machine Learning, AWS, Tableau, Python",0
+Henry42,Male,28,Diploma,1,"DevOps, AWS, Java",1
+Frank43,Female,23,M.Tech,4,"Tableau, Marketing, Excel, Data Science",0
+Jack44,Male,29,PhD,9,"Java, Agile, DevOps",0
+Isha45,Female,28,MBA,3,"Data Science, AWS, Linux",0
+Bob46,Male,28,B.Sc,10,"Data Science, SQL, Tableau",1
+Bob47,Female,35,B.Tech,1,"Java, DevOps, Agile",0
+Clara48,Female,31,PhD,8,"Tableau, Java, Linux",0
+Grace49,Female,26,PhD,4,"Java, Marketing, Excel",0
+Henry50,Female,35,B.Tech,5,"Data Science, Java, Machine Learning, Marketing",0
+Grace51,Female,31,Diploma,4,"SQL, Machine Learning",1
+Eva52,Male,27,B.Tech,2,"Marketing, Tableau",1
+Clara53,Female,23,Diploma,8,"Linux, Project Mgmt",0
+Clara54,Male,26,Diploma,5,"Marketing, Java, Python, SQL",0
+Jack55,Female,32,B.Tech,4,"Tableau, Linux, AWS",0
+Grace56,Male,25,PhD,1,"Linux, Java, Machine Learning",1
+Jack57,Male,30,Diploma,4,"R, Linux",1
+Alice58,Female,25,B.Sc,3,"Agile, Machine Learning",0
+Bob59,Female,29,Diploma,6,"SQL, Linux",0
+David60,Male,23,MBA,0,"Python, AWS, Java",1
+Jack61,Male,31,MBA,10,"Machine Learning, Java, Linux",0
+Frank62,Female,34,PhD,7,"Data Science, Java, Linux, Agile",0
+Jack63,Male,30,B.Tech,6,"DevOps, Data Science, R",1
+Clara64,Female,30,Diploma,1,"Excel, R, Data Science, DevOps",1
+Clara65,Female,23,M.Tech,4,"SQL, Marketing",0
+Bob66,Female,34,Diploma,7,"Agile, Marketing, Project Mgmt",0
+Jack67,Male,35,Diploma,5,"AWS, Java",1
+Eva68,Male,31,B.Tech,5,"Java, Machine Learning, AWS, DevOps",0
+Frank69,Male,23,Diploma,1,"Marketing, Excel, Linux, AWS",1
+Alice70,Male,34,PhD,10,"Data Science, Marketing",1
+Clara71,Female,29,B.Tech,5,"Java, Excel, Tableau, SQL",0
+Henry72,Male,30,PhD,9,"Data Science, Project Mgmt",1
+Grace73,Male,34,B.Sc,10,"Python, Agile, Tableau, DevOps",1
+Frank74,Female,30,Diploma,6,"Machine Learning, DevOps, Tableau",1
+Jack75,Female,27,B.Tech,9,"SQL, Data Science, Machine Learning, Tableau",0
+Grace76,Female,31,Diploma,1,"Excel, Linux, Tableau",1
+Clara77,Female,32,Diploma,6,"Data Science, Python, Project Mgmt, Machine Learning",0
+David78,Male,34,MBA,3,"SQL, Project Mgmt",0
+Bob79,Female,32,B.Sc,9,"Marketing, Linux",0
+Clara80,Female,33,MBA,0,"Data Science, Tableau, DevOps",0
+Henry81,Male,34,Diploma,7,"Excel, R",1
+Henry82,Female,27,Diploma,9,"AWS, Agile, Machine Learning",1
+Isha83,Male,24,M.Tech,9,"Project Mgmt, Machine Learning",0
+Henry84,Male,30,B.Tech,8,"Machine Learning, Java",1
+Eva85,Male,30,M.Tech,6,"R, AWS",1
+Alice86,Male,22,MBA,8,"R, Linux, Java",1
+Alice87,Male,23,Diploma,10,"Agile, SQL, Project Mgmt",0
+Henry88,Female,34,Diploma,7,"Marketing, Python, Java",0
+David89,Female,30,Diploma,9,"Linux, Java, Machine Learning, R",0
+Alice90,Female,28,Diploma,9,"Java, Project Mgmt, AWS",0
+Alice91,Female,33,M.Tech,4,"Python, Marketing, Data Science",0
+Grace92,Female,32,Diploma,1,"Data Science, Java, Excel, DevOps",0
+Isha93,Female,28,MBA,0,"Linux, Data Science, Machine Learning, Python",0
+Bob94,Male,25,Diploma,10,"Java, Agile, Marketing, Data Science",0
+Frank95,Male,35,Diploma,2,"AWS, DevOps, Project Mgmt, Tableau",0
+Clara96,Female,33,MBA,0,"R, Python, Project Mgmt",1
+Frank97,Male,30,MBA,8,"Machine Learning, Python, Tableau",0
+Frank98,Female,35,Diploma,5,"Java, Agile, Data Science",0
+Grace99,Male,28,B.Sc,2,"DevOps, AWS, Data Science",1
