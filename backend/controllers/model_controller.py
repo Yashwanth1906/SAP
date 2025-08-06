@@ -27,7 +27,8 @@ def convert_numpy_types(obj):
         return [convert_numpy_types(item) for item in obj]
     else:
         return obj
-
+import base64
+import requests
 
 def read_csv_headers(file_path: str) -> list[str]:
     """Read the header row from a CSV file"""
@@ -1053,6 +1054,50 @@ def add_alert(model_id, organization_id, github_url, version_id=None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to add alert: {str(e)}")
 
+def download_github_file(url:str):
+    parts = url.split("/")
+    
+    user = parts[3]
+    repo = parts[4]
+    branch = parts[6]
+    path = "/".join(parts[7:])
+    
+    api_url = f"https://api.github.com/repos/{user}/{repo}/contents/{path}?ref={branch}"
+    
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    response = requests.get(api_url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        content = base64.b64decode(data["content"])
+        file_name = path.split("/")[-1]
+        
+        with open(file_name, "wb") as f:
+            f.write(content)
+        print(f"File '{file_name}' downloaded successfully!")
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+
+def download_github_folder(user: str, repo: str, branch: str, folder_path: str) -> list:
+    """Download all files in a folder from GitHub and return their local paths"""
+    api_url = f"https://api.github.com/repos/{user}/{repo}/contents/{folder_path}?ref={branch}"
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    response = requests.get(api_url, headers=headers)
+    file_paths = []
+    if response.status_code == 200:
+        data = response.json()
+        for file_info in data:
+            if file_info['type'] == 'file':
+                file_url = file_info['download_url']
+                file_name = file_info['name']
+                file_content = requests.get(file_url).content
+                with open(file_name, "wb") as f:
+                    f.write(file_content)
+                file_paths.append(file_name)
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+    return file_paths
+
 def addalerts(repo_url: str):
     try:
         with db_manager.get_cursor() as cursor:
@@ -1070,6 +1115,38 @@ def addalerts(repo_url: str):
             cursor.execute("SELECT ID FROM VERSIONS WHERE MODEL_ID = ? ORDER BY CREATED_AT DESC LIMIT 1", (model_id,))
             version_row = cursor.fetchone()
             version_id = version_row[0] if version_row else None
-        return add_alert(model_id, organization_id, github_url, version_id)
+
+        # Parse repo_url to get user, repo, and branch (assume 'main' if not specified)
+        parts = repo_url.rstrip('/').split('/')
+        user = parts[3]
+        repo = parts[4]
+        branch = 'main'  # Default branch
+        # Optionally, fetch default branch from GitHub API
+        repo_api_url = f"https://api.github.com/repos/{user}/{repo}"
+        repo_resp = requests.get(repo_api_url)
+        if repo_resp.status_code == 200:
+            branch = repo_resp.json().get('default_branch', 'main')
+
+        # Download model files from 'models' folder
+        model_files = download_github_folder(user, repo, branch, 'models')
+        # Download test files from 'test' folder (optional, if needed)
+        test_files = download_github_folder(user, repo, branch, 'test')
+
+        # For demonstration, use the first model file and first test file (if available)
+        model_file_path = model_files[0] if model_files else None
+        dataset_file_path = test_files[0] if test_files else None
+        version_name = f"AutoCert_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+        if model_file_path and dataset_file_path:
+            from fastapi import UploadFile
+            with open(model_file_path, "rb") as mf, open(dataset_file_path, "rb") as df:
+                model_upload = UploadFile(filename=model_file_path, file=mf)
+                dataset_upload = UploadFile(filename=dataset_file_path, file=df)
+                result = certify_model(model_id, model_upload, dataset_upload, version_name)
+        else:
+            result = {"message": "Model or test file not found in repo."}
+
+        add_alert(model_id, organization_id, github_url, version_id)
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to add alert: {str(e)}") 
