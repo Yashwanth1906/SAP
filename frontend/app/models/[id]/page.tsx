@@ -42,7 +42,6 @@ export default function ModelDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isPremium, setIsPremium] = useState(false);
-  const [showWebhookPopup, setShowWebhookPopup] = useState(false);
 
   useEffect(() => {
     const user = auth.getCurrentUser();
@@ -53,15 +52,6 @@ export default function ModelDetailsPage() {
       fetchModelDetails();
     }
   }, [modelId]);
-
-  useEffect(() => {
-    // Show webhook popup after 10 seconds
-    const timer = setTimeout(() => {
-      setShowWebhookPopup(true);
-    }, 10000);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const fetchModelDetails = async () => {
     try {
@@ -100,7 +90,6 @@ export default function ModelDetailsPage() {
   const handleCertifyModel = () => {
     // Handle certification logic here
     console.log("Certifying model:", model?.id);
-    setShowWebhookPopup(false);
     // You can add API call here to trigger certification
   };
 
@@ -366,57 +355,6 @@ export default function ModelDetailsPage() {
           </motion.div>
         </div>
 
-        {/* Webhook Popup */}
-        <AnimatePresence>
-          {showWebhookPopup && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-              onClick={() => setShowWebhookPopup(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Webhook Triggered</h3>
-                    <p className="text-sm text-gray-600">Model analysis completed</p>
-                  </div>
-                </div>
-                
-                <p className="text-gray-700 mb-6">
-                  Your model has been analyzed and is ready for certification. The webhook has been triggered successfully.
-                </p>
-                
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleCertifyModel}
-                    className="flex-1 bg-[#0070C0] text-white px-4 py-2 rounded-lg hover:bg-[#005A9E] transition-colors font-medium"
-                  >
-                    Certify Model
-                  </button>
-                  <button
-                    onClick={() => setShowWebhookPopup(false)}
-                    className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </AuthGuard>
   );

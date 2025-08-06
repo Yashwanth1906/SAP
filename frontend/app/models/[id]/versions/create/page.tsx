@@ -101,7 +101,7 @@ export default function CreateVersionPage() {
           
           const initialBiasFeatures = headers.map(header => ({
             feature: header,
-            isSelected: true
+            isSelected: false
           }));
           setIntentionalBiasFeatures(initialBiasFeatures);
           
@@ -188,9 +188,6 @@ export default function CreateVersionPage() {
         JSON.stringify(selectionCriteriaData),
         JSON.stringify(selectedBiasFeatures)
       );
-      
-      // Wait for 1 minute (60 seconds)
-      await new Promise(resolve => setTimeout(resolve, 60000));
       
       setSuccess("Model certification completed successfully!");
       
