@@ -68,7 +68,7 @@ export default function LoginPage() {
           transition={{ delay: 0.1 }}
           className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900"
         >
-          Sign in to BiasCertify
+          Sign in to SAP FairCert
         </motion.h2>
         <motion.p 
           initial={{ opacity: 0, y: 20 }}

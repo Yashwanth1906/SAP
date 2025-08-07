@@ -109,7 +109,7 @@ export default function UpgradePage() {
         key: orderResponse.keyId,
         amount: orderResponse.amount,
         currency: orderResponse.currency,
-        name: "BiasCertify",
+        name: "SAP FairCert",
         description: `${selectedPlan.name} Plan Subscription`,
         order_id: orderResponse.orderId,
         handler: async function (response: any) {
@@ -169,9 +169,9 @@ export default function UpgradePage() {
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-[#0070C0] rounded flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">BC</span>
+                  <img src="/sap-logo.png" alt="SAP Logo" className="w-full h-full object-contain" />
                 </div>
-                <span className="text-xl font-semibold text-gray-900">BiasCertify</span>
+                <span className="text-xl font-semibold text-gray-900">SAP FairCert</span>
               </div>
               
               <div className="flex items-center space-x-4">

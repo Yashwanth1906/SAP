@@ -513,10 +513,10 @@ ${modelData.github_url || 'Not connected'}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 bg-[#0070C0] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">BC</span>
+                <img src="/sap-logo.png" alt="SAP Logo" className="w-full h-full object-contain" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">BiasCertify</h1>
+                <h1 className="text-lg font-semibold text-gray-900">SAP FairCert</h1>
                 <p className="text-sm text-gray-500">AI Assistant</p>
               </div>
             </div>

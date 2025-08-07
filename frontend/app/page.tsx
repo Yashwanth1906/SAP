@@ -337,10 +337,10 @@ export default function Home() {
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-3 mb-4">
-                              <div className="w-8 h-8 bg-[#0070C0] rounded flex items-center justify-center">
-                <span className="text-white font-bold text-sm">BC</span>
-              </div>
-                <span className="text-xl font-semibold">BiasCertify</span>
+                <div className="w-8 h-8 bg-[#0070C0] rounded flex items-center justify-center">
+                  <img src="/sap-logo.png" alt="SAP Logo" className="w-full h-full object-contain" />
+                </div>
+                <span className="text-xl font-semibold">SAP FairCert</span>
               </div>
               <p className="text-gray-400">
                 Building trust in AI through comprehensive bias certification and fairness evaluation.
@@ -376,7 +376,7 @@ export default function Home() {
           </div>
           
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 BiasCertify. All rights reserved.</p>
+            <p>&copy; 2024 SAP FairCert. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BiasCertify - AI Fairness Certification for Hiring Models",
+  title: "SAP FairCert - AI Fairness Certification for Hiring Models",
   description: "Automatically evaluate and certify your hiring AI models for bias, fairness, and alignment with diversity goals. Build trust with transparent, auditable AI decisions.",
 };
 
