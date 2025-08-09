@@ -185,24 +185,6 @@ export default function LoginPage() {
                 Register Organization
               </Link>
             </div>
-
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Demo Credentials</span>
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                <div className="bg-gray-50 p-3 rounded-md">
-                  <p className="text-xs text-gray-600 mb-1">Demo Organization:</p>
-                  <p className="text-sm font-mono text-gray-800">admin@techcorp.ai / securepassword123</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </motion.div>
